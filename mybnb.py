@@ -16,6 +16,7 @@ def register():
     occupation = click.prompt("Occupation")
     adress = click.prompt("Address")
     sin = click.prompt("SIN")
+    username = click.prompt("Username")
     password = click.prompt("Password", hide_input=True, confirmation_prompt=True)
     db_cursor = db_connection.cursor()
     sql_query = 'INSERT INTO User (SIN, adress, ocupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
