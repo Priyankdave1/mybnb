@@ -116,7 +116,7 @@ def login(ctx):
     elif len(result) == 1:
         click.echo('Login successful.')
         ctx.obj['is_logged_in'] = True
-        ctx.obj['userSIN'] = User(sin)
+        ctx.obj['userSIN'] = sin
         save_login_info(username, sin)
         db_cursor.close()
         return
