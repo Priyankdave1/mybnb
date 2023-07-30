@@ -18,7 +18,24 @@ def cli(ctx):
     ctx.obj['is_logged_in'] = False
     ctx.obj['userSIN'] = None
     user_Logged_in(ctx)
-    
+
+#--------------delete account----------------
+@cli.command()
+@click.pass_context
+def delete_account(ctx):
+    if not ctx.obj['is_logged_in']:
+        click.echo('You are not logged in.')
+        return
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    delete_account_sql_query = 'DELETE FROM User WHERE SIN = %s'
+    db_cursor.execute(delete_account_sql_query, (ctx.obj['userSIN'],))
+    db_connection.commit()
+    ctx.invoke(logout)
+    click.echo('User deleted.')
+    db_cursor.close()
+    return
+
 #--------------register----------------
 @cli.command()
 def register():
