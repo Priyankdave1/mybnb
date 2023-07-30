@@ -7,8 +7,13 @@ db_connection = mysql.connector.connect(
     password='Password1$',
     database='Airbnb'
 )
+is_logged_in = False
+user_sin = None
+@click.group()
+def cli():
+    pass
 
-@click.command()
+@cli.command()
 def register():
     firstname = click.prompt("First name")
     if firstname.isalpha() or len(firstname) == 0:
@@ -48,7 +53,38 @@ def register():
     db_connection.commit()
     click.echo('User registration successful.')
     db_cursor.close()
-    db_connection.close()
+    return
+
+@cli.command()
+@click.option('--username', prompt='Username', help='Your username')
+@click.option('--sin', prompt='SIN', help='Your SIN')
+@click.password_option(confirmation_prompt=False)
+def login(username, sin, password):
+    global is_logged_in 
+    global user_sin
+    if is_logged_in == True:
+        click.echo('You are already logged in.')
+        return
+    
+    db_cursor = db_connection.cursor()
+    login_query = 'SELECT * FROM User WHERE username = %s AND password = %s and SIN = %s'
+    db_cursor.execute(login_query, (username, password, sin))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo('Invalid username, password or SIN.')
+        return
+    elif len(result) == 1:
+        click.echo('Login successful.')
+        is_logged_in = True
+        user_sin = sin
+        
+    else:
+        click.echo('Something went wrong.')
+        return
+
+
+
+
 
     
 
@@ -64,4 +100,5 @@ def hello(name):
 
 
 if __name__ == '__main__':
-    register()
+     cli()
+     db_connection.close()
