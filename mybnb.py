@@ -1,18 +1,25 @@
 import click
 import mysql.connector
 
-db_connection = mysql.connector.connect(
-    host='localhost',
-    user='root',
-    password='Password1$',
-    database='Airbnb'
-)
-is_logged_in = False
-user_sin = None
-@click.group()
-def cli():
-    pass
+def get_db_connection():
+    return mysql.connector.connect(
+        host='localhost',
+        user='root',
+        password='Password1$',
+        database='Airbnb'
+    )
 
+@click.group()
+@click.pass_context
+def cli(ctx):
+    ctx.ensure_object(dict)
+    ctx.obj['db_connection'] = get_db_connection()
+    ctx.obj['username']= None
+    ctx.obj['is_logged_in'] = False
+    ctx.obj['userSIN'] = None
+    user_Logged_in(ctx)
+    
+#--------------register----------------
 @cli.command()
 def register():
     firstname = click.prompt("First name")
@@ -47,6 +54,7 @@ def register():
     if len(password) == 0:
         click.echo('Password must not be empty.')
         return
+    db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     sql_query = 'INSERT INTO User (SIN, adress, ocupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
     db_cursor.execute(sql_query, (sin, adress, occupation, date_of_birth, firstname, lastname, username, password))
@@ -55,39 +63,87 @@ def register():
     db_cursor.close()
     return
 
+def save_login_info(username, sin):
+    filename = 'login_info.txt'
+    with open(filename, 'a') as file:
+        file.write(f'Username:{username}\nSIN:{sin}\n')
+        file.close()
+    return
+def user_Logged_in(ctx):
+    filename = 'login_info.txt'
+    with open(filename, 'r') as file:
+        for line in file:
+            if 'Username' in line:
+                username = line.split(':')[1].strip()
+                ctx.obj['username'] = username
+            if 'SIN' in line:
+                sin = line.split(':')[1].strip()
+                ctx.obj['is_logged_in'] = True
+                ctx.obj['userSIN'] = sin
+                return
+        
+    return
+
+#--------------login----------------
 @cli.command()
-@click.option('--username', prompt='Username', help='Your username')
-@click.option('--sin', prompt='SIN', help='Your SIN')
-@click.password_option(confirmation_prompt=False)
-def login(username, sin, password):
-    global is_logged_in 
-    global user_sin
-    if is_logged_in == True:
-        click.echo('You are already logged in.')
+@click.pass_context
+def login(ctx):
+    if ctx.obj['is_logged_in'] == True:
+        click.echo('You are already logged in as '+ctx.obj['username'] +'.')
         return
-    
+    username  = click.prompt("Username")
+    if len(username) == 0:
+        click.echo('Username must not be empty.')
+        return
+    password = click.prompt("Password", hide_input=True)
+    if len(password) == 0:
+        click.echo('Password must not be empty.')
+        return
+    sin = click.prompt("SIN")   
+    if len(sin) != 9 or not sin.isdigit():
+        click.echo('SIN must be 9 digits long.')
+        return
+    db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     login_query = 'SELECT * FROM User WHERE username = %s AND password = %s and SIN = %s'
     db_cursor.execute(login_query, (username, password, sin))
     result = db_cursor.fetchall()
+
     if len(result) == 0:
-        click.echo('Invalid username, password or SIN.')
+        click.echo('Invalid username, password, or SIN.')
+        db_cursor.close()
         return
     elif len(result) == 1:
         click.echo('Login successful.')
-        is_logged_in = True
-        user_sin = sin
-        
+        ctx.obj['is_logged_in'] = True
+        ctx.obj['userSIN'] = User(sin)
+        save_login_info(username, sin)
+        db_cursor.close()
+        return
     else:
         click.echo('Something went wrong.')
+        db_cursor.close()
         return
 
-
-
-
-
     
+#--------------logout----------------
 
+@cli.command()
+@click.pass_context
+def logout(ctx):
+    if not ctx.obj['is_logged_in']:
+        click.echo('You are not logged in.')
+        return
+    ctx.obj['is_logged_in'] = False
+    ctx.obj['userSIN'] = None
+    filename = 'login_info.txt' 
+    with open(filename, 'w') as file:
+        file.write('')
+        file.close()
+    click.echo('Logout successful.')
+    return
+
+        
 
 
 
@@ -100,5 +156,7 @@ def hello(name):
 
 
 if __name__ == '__main__':
-     cli()
-     db_connection.close()
+         
+     cli(obj = {})
+     
+
