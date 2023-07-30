@@ -40,11 +40,11 @@ def delete_account(ctx):
 @cli.command()
 def register():
     firstname = click.prompt("First name")
-    if firstname.isalpha() or len(firstname) == 0:
-        click.echo('First name must not be empty, and must not contain numbers.')
+    if not firstname.isalpha() or len(firstname) == 0:
+        click.echo('First name must not be empty, and must not contain numbers.'+' '+firstname.isalpha().__str__())
         return
     lastname = click.prompt("Last name")
-    if lastname.isalpha() or len(lastname) == 0:
+    if not lastname.isalpha() or len(lastname) == 0:
         click.echo('Last name must not be empty, and must not contain numbers.')
         return
     date_of_birth = click.prompt("Date of birth (YYYY-MM-DD)")
