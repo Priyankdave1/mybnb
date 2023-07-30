@@ -55,8 +55,8 @@ def register():
     if  len(occupation) == 0:
         click.echo('Occupation must not be empty.')
         return
-    adress = click.prompt("Address")
-    if  len(adress) == 0 or adress.isalphanum():
+    address = click.prompt("Address")
+    if  len(address) == 0 or address.isalnum():
         click.echo('Address must not be empty, and must not contain special characters.')
         return
     sin = click.prompt("SIN (9 digits)")
@@ -73,8 +73,8 @@ def register():
         return
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    sql_query = 'INSERT INTO User (SIN, adress, ocupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
-    db_cursor.execute(sql_query, (sin, adress, occupation, date_of_birth, firstname, lastname, username, password))
+    sql_query = 'INSERT INTO User (SIN, address, ocupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+    db_cursor.execute(sql_query, (sin, address, occupation, date_of_birth, firstname, lastname, username, password))
     db_connection.commit()
     click.echo('User registration successful.')
     db_cursor.close()
