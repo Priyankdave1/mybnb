@@ -1,6 +1,7 @@
 import click
 import mysql.connector
 import haversine as hs
+import tabulate as tb
 def get_db_connection():
     try:
         return mysql.connector.connect(
@@ -201,16 +202,15 @@ def listingsInRange(ctx):
         if distance <= float(rangeInKM):
             row1 = list(row)
             row1.append(distance)
-            listings_in_range_by_distance.append(row1)
+            listings_in_range_by_distance.append(row1[1:])
     if len(listings_in_range_by_distance) == 0:
         click.echo('No listings found within range.')
         db_cursor.close()
         return
     else:
         click.echo('Listings found within range:')
-        listings_in_range_by_distance.sort(key=lambda x: x[8])
-        for listing in listings_in_range_by_distance:
-            click.echo(listing[1:])
+        listings_in_range_by_distance.sort(key=lambda x: x[7])
+        click.echo(tb.tabulate(listings_in_range_by_distance, headers=['city','latitude','longitude','postal code','country','type','address','distance']))
         db_cursor.close()
         return
 
