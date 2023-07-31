@@ -1,6 +1,6 @@
 import click
 import mysql.connector
-
+import haversine as hs
 def get_db_connection():
     try:
         return mysql.connector.connect(
@@ -168,6 +168,57 @@ def logout(ctx):
         file.close()
     click.echo('Logout successful.')
     return
+
+#--------------search for listing in range----------------
+@cli.command()
+@click.pass_context
+def listingsInRange(ctx):
+    if not ctx.obj['is_logged_in']:
+        click.echo('You are not logged in.')
+        return
+    longitude = click.prompt("Longitude")
+    if longitude.isdigit() == False or float(longitude) < -180 or float(longitude) > 180:
+        click.echo('Longitude must be a number between -180 and 180.')
+        return
+    latitude = click.prompt("Latitude")
+    if latitude.isdigit() == False or float(latitude) < -90 or float(latitude) > 90:
+        click.echo('Latitude must be a number between -90 and 90.')
+        return
+    rangeInKM = click.prompt("Range in Km (default: 500 Km)",default='500')
+    if rangeInKM.isdigit() == False or float(rangeInKM) < 0: 
+        click.echo('Range must be a number greater than 0.')
+        return
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    sql_query = 'SELECT * FROM Listing'    
+    db_cursor.execute(sql_query)
+    result = db_cursor.fetchall()
+    listings_in_range_by_distance = []
+    for row in result:      
+        latitude_listing = row[2]
+        longitude_listing= row[3]
+        distance = haversine(float(latitude), float(longitude), float(latitude_listing),float(longitude_listing))
+        if distance <= float(rangeInKM):
+            row1 = list(row)
+            row1.append(distance)
+            listings_in_range_by_distance.append(row1)
+    if len(listings_in_range_by_distance) == 0:
+        click.echo('No listings found within range.')
+        db_cursor.close()
+        return
+    else:
+        click.echo('Listings found within range:')
+        listings_in_range_by_distance.sort(key=lambda x: x[8])
+        for listing in listings_in_range_by_distance:
+            click.echo(listing[1:])
+        db_cursor.close()
+        return
+
+def haversine(lat1, lon1, lat2, lon2):
+    location1 = (lat1, lon1)
+    location2 = (lat2, lon2)
+    distance = hs.haversine(location1, location2)
+    return distance
 
 
 @click.command()
