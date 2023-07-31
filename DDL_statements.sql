@@ -85,7 +85,7 @@ CREATE TABLE `Renter` (
 CREATE TABLE `User` (
   `SIN` int NOT NULL,
   `address` varchar(45) NOT NULL,
-  `ocupation` varchar(45) NOT NULL,
+  `occupation` varchar(45) NOT NULL,
   `dob` date NOT NULL,
   `firstName` varchar(45) NOT NULL,
   `lastName` varchar(45) NOT NULL,

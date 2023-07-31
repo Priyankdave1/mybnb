@@ -2,12 +2,16 @@ import click
 import mysql.connector
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host='localhost',
-        user='root',
-        password='Password1$',
-        database='Airbnb'
-    )
+    try:
+        return mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Password1$',
+            database='Airbnb'
+        )
+    except Exception as e:
+        click.echo("Error: "+e)
+        return None
 
 @click.group()
 @click.pass_context
@@ -41,7 +45,7 @@ def delete_account(ctx):
 def register():
     firstname = click.prompt("First name")
     if not firstname.isalpha() or len(firstname) == 0:
-        click.echo('First name must not be empty, and must not contain numbers.'+' '+firstname.isalpha().__str__())
+        click.echo('First name must not be empty, and must not contain numbers.')
         return
     lastname = click.prompt("Last name")
     if not lastname.isalpha() or len(lastname) == 0:
@@ -73,7 +77,7 @@ def register():
         return
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    sql_query = 'INSERT INTO User (SIN, address, ocupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+    sql_query = 'INSERT INTO User (SIN, address, occupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
     db_cursor.execute(sql_query, (sin, address, occupation, date_of_birth, firstname, lastname, username, password))
     db_connection.commit()
     click.echo('User registration successful.')
@@ -86,19 +90,24 @@ def save_login_info(username, sin):
         file.write(f'Username:{username}\nSIN:{sin}\n')
         file.close()
     return
+
 def user_Logged_in(ctx):
     filename = 'login_info.txt'
-    with open(filename, 'r') as file:
-        for line in file:
-            if 'Username' in line:
-                username = line.split(':')[1].strip()
-                ctx.obj['username'] = username
-            if 'SIN' in line:
-                sin = line.split(':')[1].strip()
-                ctx.obj['is_logged_in'] = True
-                ctx.obj['userSIN'] = sin
-                return
-        
+    try:
+        with open(filename, 'r') as file:
+            for line in file:
+                if 'Username' in line:
+                    username = line.split(':')[1].strip()
+                    ctx.obj['username'] = username
+                if 'SIN' in line:
+                    sin = line.split(':')[1].strip()
+                    ctx.obj['is_logged_in'] = True
+                    ctx.obj['userSIN'] = sin
+                    return
+    except FileNotFoundError:
+        click.echo("file not found.")
+    except Exception as e:
+        click.echo("Error: "+e)
     return
 
 #--------------login----------------
@@ -142,7 +151,7 @@ def login(ctx):
         db_cursor.close()
         return
 
-    
+
 #--------------logout----------------
 
 @cli.command()
@@ -160,9 +169,6 @@ def logout(ctx):
     click.echo('Logout successful.')
     return
 
-        
-
-
 
 @click.command()
 @click.option('--name', prompt='Your name',
@@ -170,10 +176,5 @@ def logout(ctx):
 def hello(name):
     click.echo('Hello %s!' % name)
 
-
-
 if __name__ == '__main__':
-         
-     cli(obj = {})
-     
-
+    cli(obj={})
