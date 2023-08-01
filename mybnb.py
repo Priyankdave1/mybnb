@@ -177,14 +177,6 @@ def login(ctx):
         return
 
 
-# SQL queries
-
-
-
-delete_listing = "DELETE FROM Listing VALUES (%s, %s, %s, %s, %s, %s)"
-
-
-check_is_available_on_date = "SELECT * FROM Availability WHERE date_available = %s AND password = %s and SIN = %s"
 
 
 # --------------logout----------------
@@ -261,9 +253,6 @@ def haversine(lat1, lon1, lat2, lon2):
               help='The person to greet.')
 def hello(name):
     click.echo('Hello %s!' % name)
-
-if __name__ == '__main__':
-    cli(obj={})
 
 @cli.command()
 @click.pass_context
@@ -405,25 +394,26 @@ def delete_listing(ctx, all):
         db_connection.commit()
         db_cursor.close()
         db_connection.close()
-        click.echo("Deleted all listings created by Username:", ctx.obj["username"])
+        print("Deleted all listings created by Username:", ctx.obj["username"])
         return
     
-    getAllListings_query = "SELECT * FROM HostCreatesListing NATURAL JOIN Listing WHERE hostSIN = %s"
+    getAllListings_query = "SELECT listingId,city,latitude,longitude,postalCode,country,type,address FROM HostCreatesListing NATURAL JOIN Listing WHERE hostSIN = %s"
     db_cursor.execute(getAllListings_query, (sin,))
     result = db_cursor.fetchall()
     if len(result) == 0:
         click.echo("You have no listings.")
         return
     click.echo("Your listings:")
-    # Show table here
-    print(result)
+    table = [["Sun",696000,1989100000],["Earth",6371,5973.6], ["Moon",1737,73.5],["Mars",3390,641.85]]
+    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"], tablefmt="grid"))
+    
     keys=[]
     for row in result:
         keys.append(row[0])
 
     print(keys)
     
-    listing_id = click.prompt("Please enter the ID of the listing you want to delete", type=int )
+    listing_id = click.prompt("Please enter the ID of the listing you want to delete", type=int)
 
     if listing_id not in keys:
         click.echo("Invalid listing ID.")
@@ -431,10 +421,11 @@ def delete_listing(ctx, all):
     
     deleteListing_query = "DELETE FROM Listing WHERE listingId = %s"
     db_cursor.execute(deleteListing_query, (listing_id,))
+    print("Deleted listing ID:", str(listing_id))
     db_connection.commit()
     db_cursor.close()
     db_connection.close()
-    click.echo("Deleted listing ID:", listing_id)
+   
   
 
 

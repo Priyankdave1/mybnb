@@ -118,18 +118,6 @@ CREATE TABLE `Renter` (
   CONSTRAINT `SIN` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `User` (
-  `SIN` int NOT NULL,
-  `address` varchar(45) NOT NULL,
-  `occupation` varchar(45) NOT NULL,
-  `dob` date NOT NULL,
-  `firstName` varchar(45) NOT NULL,
-  `lastName` varchar(45) NOT NULL,
-  `username` varchar(45) NOT NULL,
-  `password` varchar(45) NOT NULL,
-  PRIMARY KEY (`SIN`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
 CREATE TABLE `UserReviews` (
   `commentedOn` int NOT NULL,
   `commentedBy` int DEFAULT NULL,
