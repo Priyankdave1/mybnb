@@ -1,3 +1,56 @@
+
+SET FOREIGN_KEY_CHECKS = 0;
+SET GROUP_CONCAT_MAX_LEN=32768;
+SET @tables = NULL;
+SELECT GROUP_CONCAT('`', table_name, '`') INTO @tables
+  FROM information_schema.tables
+  WHERE table_schema = (SELECT DATABASE());
+SELECT IFNULL(@tables,'dummy') INTO @tables;
+SET @tables = CONCAT('DROP TABLE IF EXISTS ', @tables);
+PREPARE stmt FROM @tables;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+SET FOREIGN_KEY_CHECKS = 1;
+
+
+CREATE TABLE `Listing` (
+  `listingId` int NOT NULL AUTO_INCREMENT,
+  `city` varchar(45) NOT NULL,
+  `latitude` decimal(8,6) NOT NULL,
+  `longitude` decimal(9,6) NOT NULL,
+  `postalCode` varchar(45) NOT NULL,
+  `country` varchar(45) NOT NULL,
+  `type` varchar(45) NOT NULL,
+  `address` varchar(45) NOT NULL,
+  PRIMARY KEY (`listingId`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
+CREATE TABLE `User` (
+  `SIN` int NOT NULL,
+  `address` varchar(45) NOT NULL,
+  `ocupation` varchar(45) NOT NULL,
+  `dob` date NOT NULL,
+  `firstName` varchar(45) NOT NULL,
+  `lastName` varchar(45) NOT NULL,
+  `username` varchar(45) NOT NULL,
+  `password` varchar(45) NOT NULL,
+  PRIMARY KEY (`SIN`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `Host` (
+  `SIN` int NOT NULL,
+  KEY `SIN_idx` (`SIN`),
+  CONSTRAINT `FK_Host_User` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `Renter` (
+  `SIN` int NOT NULL,
+  KEY `SIN_idx` (`SIN`),
+  CONSTRAINT `SIN` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 CREATE TABLE `Amenities` (
   `name` varchar(45) NOT NULL,
   PRIMARY KEY (`name`)
@@ -29,11 +82,6 @@ CREATE TABLE `BookedBy` (
   CONSTRAINT `RenterFK` FOREIGN KEY (`RenterSIN`) REFERENCES `Renter` (`SIN`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `Host` (
-  `SIN` int NOT NULL,
-  KEY `SIN_idx` (`SIN`),
-  CONSTRAINT `FK_Host_User` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `HostCreatesListing` (
   `hostSIN` int NOT NULL,
@@ -42,18 +90,6 @@ CREATE TABLE `HostCreatesListing` (
   KEY `listingFK_idx` (`listingId`),
   CONSTRAINT `FKtoListing` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
   CONSTRAINT `hostFK` FOREIGN KEY (`hostSIN`) REFERENCES `Host` (`SIN`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `Listing` (
-  `listingId` int NOT NULL AUTO_INCREMENT,
-  `city` varchar(45) NOT NULL,
-  `latitude` decimal(8,6) NOT NULL,
-  `longitude` decimal(9,6) NOT NULL,
-  `postalCode` varchar(45) NOT NULL,
-  `country` varchar(45) NOT NULL,
-  `type` varchar(45) NOT NULL,
-  `address` varchar(45) NOT NULL,
-  PRIMARY KEY (`listingId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ListingReviewAndComments` (
@@ -68,30 +104,12 @@ CREATE TABLE `ListingReviewAndComments` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ListingToAmenities` (
-  `ListingId` int NOT NULL,
-  `Amenity` varchar(45) NOT NULL,
+  `listingId` int NOT NULL,
+  `amenity` varchar(45) NOT NULL,
   KEY `ListingFK_idx` (`ListingId`),
   KEY `AmenitiesFK` (`Amenity`),
-  CONSTRAINT `AmenitiesFK` FOREIGN KEY (`Amenity`) REFERENCES `Amenities` (`name`) ON DELETE CASCADE,
-  CONSTRAINT `ListingFK` FOREIGN KEY (`ListingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `Renter` (
-  `SIN` int NOT NULL,
-  KEY `SIN_idx` (`SIN`),
-  CONSTRAINT `SIN` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `User` (
-  `SIN` int NOT NULL,
-  `address` varchar(45) NOT NULL,
-  `ocupation` varchar(45) NOT NULL,
-  `dob` date NOT NULL,
-  `firstName` varchar(45) NOT NULL,
-  `lastName` varchar(45) NOT NULL,
-  `username` varchar(45) NOT NULL,
-  `password` varchar(45) NOT NULL,
-  PRIMARY KEY (`SIN`)
+  CONSTRAINT `AmenitiesFK` FOREIGN KEY (`amenity`) REFERENCES `Amenities` (`name`) ON DELETE CASCADE,
+  CONSTRAINT `ListingFK` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `UserReviews` (
@@ -104,3 +122,15 @@ CREATE TABLE `UserReviews` (
   CONSTRAINT `CommentedBy` FOREIGN KEY (`commentedBy`) REFERENCES `User` (`SIN`) ON DELETE CASCADE,
   CONSTRAINT `CommentedOn` FOREIGN KEY (`commentedOn`) REFERENCES `User` (`SIN`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+INSERT INTO Amenities (name) VALUES ('Washer');
+INSERT INTO Amenities (name) VALUES ('Dryer');
+INSERT INTO Amenities (name) VALUES ('Dishwasher');
+INSERT INTO Amenities (name) VALUES ('Microwave');
+INSERT INTO Amenities (name) VALUES ('Oven');
+INSERT INTO Amenities (name) VALUES ('Stove');
+INSERT INTO Amenities (name) VALUES ('Refrigerator');
+
+
+
+
