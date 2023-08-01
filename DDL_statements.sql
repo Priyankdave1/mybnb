@@ -108,8 +108,26 @@ CREATE TABLE `ListingToAmenities` (
   `amenity` varchar(45) NOT NULL,
   KEY `ListingFK_idx` (`ListingId`),
   KEY `AmenitiesFK` (`Amenity`),
-  CONSTRAINT `AmenitiesFK` FOREIGN KEY (`amenity`) REFERENCES `Amenities` (`name`) ON DELETE CASCADE,
-  CONSTRAINT `ListingFK` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
+  CONSTRAINT `AmenitiesFK` FOREIGN KEY (`Amenity`) REFERENCES `Amenities` (`name`) ON DELETE CASCADE,
+  CONSTRAINT `ListingFK` FOREIGN KEY (`ListingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `Renter` (
+  `SIN` int NOT NULL,
+  KEY `SIN_idx` (`SIN`),
+  CONSTRAINT `SIN` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE `User` (
+  `SIN` int NOT NULL,
+  `address` varchar(45) NOT NULL,
+  `occupation` varchar(45) NOT NULL,
+  `dob` date NOT NULL,
+  `firstName` varchar(45) NOT NULL,
+  `lastName` varchar(45) NOT NULL,
+  `username` varchar(45) NOT NULL,
+  `password` varchar(45) NOT NULL,
+  PRIMARY KEY (`SIN`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `UserReviews` (

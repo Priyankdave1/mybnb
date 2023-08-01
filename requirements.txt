@@ -1,2 +1,4 @@
 click
 mysql-connector-python
+haversine
+tabulate

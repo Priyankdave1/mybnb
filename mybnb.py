@@ -1,13 +1,22 @@
 from datetime import datetime, timedelta
 import click
 import mysql.connector
+import haversine as hs
+import tabulate as tb
 import helpers
 
 
 def get_db_connection():
-    return mysql.connector.connect(
-        host="localhost", user="root", password="Password1$", database="Airbnb"
-    )
+    try:
+        return mysql.connector.connect(
+            host='localhost',
+            user='root',
+            password='Password1$',
+            database='Airbnb'
+        )
+    except Exception as e:
+        click.echo("Error: "+e)
+        return None
 
 
 @click.group()
@@ -44,11 +53,7 @@ def delete_account(ctx):
 def register():
     firstname = click.prompt("First name")
     if not firstname.isalpha() or len(firstname) == 0:
-        click.echo(
-            "First name must not be empty, and must not contain numbers."
-            + " "
-            + firstname.isalpha().__str__()
-        )
+        click.echo('First name must not be empty, and must not contain numbers.')
         return
     lastname = click.prompt("Last name")
     if not lastname.isalpha() or len(lastname) == 0:
@@ -91,20 +96,8 @@ def register():
         return
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    sql_query = "INSERT INTO User (SIN, address, ocupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
-    db_cursor.execute(
-        sql_query,
-        (
-            sin,
-            address,
-            occupation,
-            date_of_birth,
-            firstname,
-            lastname,
-            username,
-            password,
-        ),
-    )
+    sql_query = 'INSERT INTO User (SIN, address, occupation, dob, firstName, lastName, username, password) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)'
+    db_cursor.execute(sql_query, (sin, address, occupation, date_of_birth, firstname, lastname, username, password))
     db_connection.commit()
     click.echo("User registration successful.")
     # Keep user logged in after registration
@@ -119,20 +112,23 @@ def save_login_info(username, sin):
         file.close()
     return
 
-
 def user_Logged_in(ctx):
-    filename = "login_info.txt"
-    with open(filename, "r") as file:
-        for line in file:
-            if "Username" in line:
-                username = line.split(":")[1].strip()
-                ctx.obj["username"] = username
-            if "SIN" in line:
-                sin = line.split(":")[1].strip()
-                ctx.obj["is_logged_in"] = True
-                ctx.obj["userSIN"] = sin
-                return
-
+    filename = 'login_info.txt'
+    try:
+        with open(filename, 'r') as file:
+            for line in file:
+                if 'Username' in line:
+                    username = line.split(':')[1].strip()
+                    ctx.obj['username'] = username
+                if 'SIN' in line:
+                    sin = line.split(':')[1].strip()
+                    ctx.obj['is_logged_in'] = True
+                    ctx.obj['userSIN'] = sin
+                    return
+    except FileNotFoundError:
+        click.echo("file not found.")
+    except Exception as e:
+        click.echo("Error: "+e)
     return
 
 
@@ -209,6 +205,65 @@ def logout(ctx):
     click.echo("Logout successful.")
     return
 
+#--------------search for listing in range----------------
+@cli.command()
+@click.pass_context
+def listingsInRange(ctx):
+    if not ctx.obj['is_logged_in']:
+        click.echo('You are not logged in.')
+        return
+    longitude = click.prompt("Longitude")
+    if longitude.isdigit() == False or float(longitude) < -180 or float(longitude) > 180:
+        click.echo('Longitude must be a number between -180 and 180.')
+        return
+    latitude = click.prompt("Latitude")
+    if latitude.isdigit() == False or float(latitude) < -90 or float(latitude) > 90:
+        click.echo('Latitude must be a number between -90 and 90.')
+        return
+    rangeInKM = click.prompt("Range in Km (default: 500 Km)",default='500')
+    if rangeInKM.isdigit() == False or float(rangeInKM) < 0: 
+        click.echo('Range must be a number greater than 0.')
+        return
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    sql_query = 'SELECT * FROM Listing'    
+    db_cursor.execute(sql_query)
+    result = db_cursor.fetchall()
+    listings_in_range_by_distance = []
+    for row in result:      
+        latitude_listing = row[2]
+        longitude_listing= row[3]
+        distance = haversine(float(latitude), float(longitude), float(latitude_listing),float(longitude_listing))
+        if distance <= float(rangeInKM):
+            row1 = list(row)
+            row1.append(distance)
+            listings_in_range_by_distance.append(row1[1:])
+    if len(listings_in_range_by_distance) == 0:
+        click.echo('No listings found within range.')
+        db_cursor.close()
+        return
+    else:
+        click.echo('Listings found within range:')
+        listings_in_range_by_distance.sort(key=lambda x: x[7])
+        click.echo(tb.tabulate(listings_in_range_by_distance, headers=['city','latitude','longitude','postal code','country','type','address','distance']))
+        db_cursor.close()
+        return
+
+def haversine(lat1, lon1, lat2, lon2):
+    location1 = (lat1, lon1)
+    location2 = (lat2, lon2)
+    distance = hs.haversine(location1, location2)
+    return distance
+
+
+@click.command()
+@click.option('--name', prompt='Your name',
+              help='The person to greet.')
+def hello(name):
+    click.echo('Hello %s!' % name)
+
+if __name__ == '__main__':
+    cli(obj={})
 
 @cli.command()
 @click.pass_context
