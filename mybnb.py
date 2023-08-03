@@ -4,7 +4,7 @@ import mysql.connector
 import haversine as hs
 import tabulate as tb
 import helpers
-
+import search
 
 def get_db_connection():
     try:
@@ -27,6 +27,11 @@ def cli(ctx):
     ctx.obj["username"] = None
     ctx.obj["is_logged_in"] = False
     ctx.obj["userSIN"] = None
+    ctx.obj["amenities"] = []
+    ctx.obj["price_min"] = None
+    ctx.obj["price_max"] = None
+    ctx.obj["start_date"] = None
+    ctx.obj["end_date"] = None
     user_Logged_in(ctx)
 
 
@@ -197,56 +202,73 @@ def logout(ctx):
     click.echo("Logout successful.")
     return
 
-#--------------search for listing in range----------------
+
+
+
+# --------------search----------------
 @cli.command()
 @click.pass_context
-def listingsInRange(ctx):
-    if not ctx.obj['is_logged_in']:
-        click.echo('You are not logged in.')
-        return
-    longitude = click.prompt("Longitude")
-    if longitude.isdigit() == False or float(longitude) < -180 or float(longitude) > 180:
-        click.echo('Longitude must be a number between -180 and 180.')
-        return
-    latitude = click.prompt("Latitude")
-    if latitude.isdigit() == False or float(latitude) < -90 or float(latitude) > 90:
-        click.echo('Latitude must be a number between -90 and 90.')
-        return
-    rangeInKM = click.prompt("Range in Km (default: 500 Km)",default='500')
-    if rangeInKM.isdigit() == False or float(rangeInKM) < 0: 
-        click.echo('Range must be a number greater than 0.')
-        return
-    db_connection = get_db_connection()
-    db_cursor = db_connection.cursor()
-    sql_query = 'SELECT * FROM Listing'    
-    db_cursor.execute(sql_query)
-    result = db_cursor.fetchall()
-    listings_in_range_by_distance = []
-    for row in result:      
-        latitude_listing = row[2]
-        longitude_listing= row[3]
-        distance = haversine(float(latitude), float(longitude), float(latitude_listing),float(longitude_listing))
-        if distance <= float(rangeInKM):
-            row1 = list(row)
-            row1.append(distance)
-            listings_in_range_by_distance.append(row1[1:])
-    if len(listings_in_range_by_distance) == 0:
-        click.echo('No listings found within range.')
-        db_cursor.close()
-        return
-    else:
-        click.echo('Listings found within range:')
-        listings_in_range_by_distance.sort(key=lambda x: x[7])
-        click.echo(tb.tabulate(listings_in_range_by_distance, headers=['city','latitude','longitude','postal code','country','type','address','distance']))
-        db_cursor.close()
-        return
+def search_with_filters(ctx):
+    #search filters
+    amenities = []
+    price_min = None
+    price_max = None
+    start_date = None
+    end_date = None
 
-def haversine(lat1, lon1, lat2, lon2):
-    location1 = (lat1, lon1)
-    location2 = (lat2, lon2)
-    distance = hs.haversine(location1, location2)
-    return distance
-
+    start_date = click.prompt("Start Date (YYYY-MM-DD)")
+    if not helpers.is_valid_date(start_date):
+        click.echo('Invalid Start Date format. Please use the format YYYY-MM-DD.')
+        return
+    end_date = click.prompt("End Date (YYYY-MM-DD)")
+    if not helpers.is_valid_date(end_date):
+        click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
+        return
+    if start_date > end_date:
+        click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
+        return
+    ctx.obj['start_date'] = start_date
+    ctx.obj['end_date'] = end_date
+    while True:
+        click.echo('1. Search by postal code')
+        click.echo('2. Search by address')
+        click.echo('3. Search listing within range')
+        click.echo('4. Add/Change filters')
+        click.echo('5. Clear filters')
+        click.echo('6. Back')
+        choice = click.prompt('Please select an option', type=int)
+        if choice == 1:
+            search.search_listing_by_SimilarpostalCode()
+        elif choice == 2:
+            search.search_by_address()
+        elif choice == 3:
+            search.listingsInRange()
+        elif choice == 4:
+            #validate input
+            amenities = click.prompt('Please enter amenities (comma-separated), :', type=click.STRING)
+             
+            ctx.obj['amenities'] = amenities.split(',')
+            ctx.obj['price_min'] = click.prompt('Please enter minimum price (Default = 0):', type=click.INT)
+            ctx.obj['price_max'] = click.prompt('Please enter maximum price (Default = ):', type=click.INT)
+            ctx.obj['start_date'] = click.prompt('Please enter start date (YYYY-MM-DD):', type=click.STRING)
+            ctx.obj['end_date'] = click.prompt('Please enter end date (YYYY-MM-DD):', type=click.STRING)
+            if not helpers.is_valid_date(start_date):
+                click.echo('Invalid Start Date format. Please use the format YYYY-MM-DD.')
+                return
+            if not helpers.is_valid_date(end_date):
+                click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
+                return
+        elif choice == 5:
+            amenities = []
+            price_min = None
+            price_max = None
+            start_date = None
+            end_date = None
+        elif choice == 6:
+            return
+        else:
+            click.echo('Invalid option.')
+            continue
 
 @click.command()
 @click.option('--name', prompt='Your name',
