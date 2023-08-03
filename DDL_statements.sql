@@ -1,4 +1,4 @@
-
+USE airbnb;
 SET FOREIGN_KEY_CHECKS = 0;
 SET GROUP_CONCAT_MAX_LEN=32768;
 SET @tables = NULL;
@@ -22,6 +22,8 @@ CREATE TABLE `Listing` (
   `country` varchar(45) NOT NULL,
   `type` varchar(45) NOT NULL,
   `address` varchar(45) NOT NULL,
+  `bedrooms` int NOT NULL,
+  `bathrooms` int NOT NULL,  
   PRIMARY KEY (`listingId`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -30,7 +32,7 @@ CREATE TABLE `Listing` (
 CREATE TABLE `User` (
   `SIN` int NOT NULL,
   `address` varchar(45) NOT NULL,
-  `ocupation` varchar(45) NOT NULL,
+  `occupation` varchar(45) NOT NULL,
   `dob` date NOT NULL,
   `firstName` varchar(45) NOT NULL,
   `lastName` varchar(45) NOT NULL,
@@ -39,17 +41,6 @@ CREATE TABLE `User` (
   PRIMARY KEY (`SIN`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `Host` (
-  `SIN` int NOT NULL,
-  KEY `SIN_idx` (`SIN`),
-  CONSTRAINT `FK_Host_User` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-CREATE TABLE `Renter` (
-  `SIN` int NOT NULL,
-  KEY `SIN_idx` (`SIN`),
-  CONSTRAINT `SIN` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `Amenities` (
   `name` varchar(45) NOT NULL,
@@ -60,6 +51,7 @@ CREATE TABLE `Availability` (
   `dateAvailable` date NOT NULL,
   `price` decimal(20,2) NOT NULL,
   `listingId` int NOT NULL,
+  `isAvailable` BOOLEAN NOT NULL DEFAULT TRUE,
   PRIMARY KEY (`dateAvailable`,`listingId`),
   KEY `ListingFK_idx` (`listingId`),
   CONSTRAINT `ListingIdFK` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
@@ -79,17 +71,17 @@ CREATE TABLE `BookedBy` (
   KEY `cancelledByFK_idx` (`cancelledBy`),
   CONSTRAINT `cancelledByFK` FOREIGN KEY (`cancelledBy`) REFERENCES `User` (`SIN`),
   CONSTRAINT `FKlistingID` FOREIGN KEY (`ListingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
-  CONSTRAINT `RenterFK` FOREIGN KEY (`RenterSIN`) REFERENCES `Renter` (`SIN`)
+  CONSTRAINT `RenterFK` FOREIGN KEY (`RenterSIN`) REFERENCES `User` (`SIN`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
-CREATE TABLE `HostCreatesListing` (
+CREATE TABLE `UserCreatesListing` (
   `hostSIN` int NOT NULL,
   `listingId` int NOT NULL,
   KEY `hostFK_idx` (`hostSIN`),
   KEY `listingFK_idx` (`listingId`),
   CONSTRAINT `FKtoListing` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
-  CONSTRAINT `hostFK` FOREIGN KEY (`hostSIN`) REFERENCES `Host` (`SIN`) ON DELETE CASCADE
+  CONSTRAINT `hostFK` FOREIGN KEY (`hostSIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ListingReviewAndComments` (
@@ -100,7 +92,7 @@ CREATE TABLE `ListingReviewAndComments` (
   PRIMARY KEY (`listingId`,`renterSIN`),
   KEY `Renter_idx` (`renterSIN`),
   CONSTRAINT `Listing` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
-  CONSTRAINT `Renter` FOREIGN KEY (`renterSIN`) REFERENCES `Renter` (`SIN`) ON DELETE CASCADE
+  CONSTRAINT `Renter` FOREIGN KEY (`renterSIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `ListingToAmenities` (
@@ -112,11 +104,6 @@ CREATE TABLE `ListingToAmenities` (
   CONSTRAINT `ListingFK` FOREIGN KEY (`ListingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-CREATE TABLE `Renter` (
-  `SIN` int NOT NULL,
-  KEY `SIN_idx` (`SIN`),
-  CONSTRAINT `SIN` FOREIGN KEY (`SIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `UserReviews` (
   `commentedOn` int NOT NULL,
@@ -129,6 +116,10 @@ CREATE TABLE `UserReviews` (
   CONSTRAINT `CommentedOn` FOREIGN KEY (`commentedOn`) REFERENCES `User` (`SIN`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+
+INSERT INTO User(SIN, address, occupation, dob, firstName, lastName, username, password) VALUES (111111111, 'Zesty Lane', 'Job', '1111-11-11', 'Yank', 'Moment', 'youjustgotpriyanked', 'password');
+
+
 INSERT INTO Amenities (name) VALUES ('Washer');
 INSERT INTO Amenities (name) VALUES ('Dryer');
 INSERT INTO Amenities (name) VALUES ('Dishwasher');
@@ -136,7 +127,3 @@ INSERT INTO Amenities (name) VALUES ('Microwave');
 INSERT INTO Amenities (name) VALUES ('Oven');
 INSERT INTO Amenities (name) VALUES ('Stove');
 INSERT INTO Amenities (name) VALUES ('Refrigerator');
-
-
-
-

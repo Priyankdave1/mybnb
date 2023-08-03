@@ -19,6 +19,31 @@ def get_db_connection():
         return None
 
 
+def getAvailableListingsForBooking(start_date, end_date, sin):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+
+    # Add WHERE SIN != %s to exclude the user's own listings
+    getNumAvailibilityInRange= """
+         SELECT listingId
+FROM (
+    SELECT listingId
+    FROM Availability
+    WHERE dateAvailable BETWEEN %s AND %s AND isAvailable=1
+    GROUP BY listingId
+    HAVING COUNT(DISTINCT dateAvailable) = DATEDIFF(%s, %s) + 1
+) AS availableListings
+NATURAL JOIN UserCreatesListing;
+    """
+   
+    db_cursor.execute(getNumAvailibilityInRange, (start_date, end_date, end_date, start_date))
+    availableListings = db_cursor.fetchall()
+    db_cursor.close()
+    db_connection.close()
+    return availableListings
+
+
+
 @click.group()
 @click.pass_context
 def cli(ctx):
@@ -71,6 +96,9 @@ def register():
         or int(date_of_birth[8:]) > 31
     ):
         click.echo("Date of birth must be in the format YYYY-MM-DD.")
+        return
+    if(not helpers.is_over_18(date_of_birth)):
+        click.echo("User must be 18 or older")
         return
     occupation = click.prompt("Occupation")
     if len(occupation) == 0:
@@ -266,7 +294,7 @@ def create_listing(ctx):
         click.echo('Address must be in the format: Number Street')
         return
     
-    Ltype = click.prompt("Type")
+    Ltype = click.prompt("Type", type=str)
 
     Ltype = Ltype.lower()
     if Ltype not in ['apartment', 'house', 'room']:
@@ -287,16 +315,19 @@ def create_listing(ctx):
     if len(postalCode) != 6:
         click.echo('Postal Code must be 6 characters long.')
         return
-    latitude = click.prompt("Latitude")
+    latitude = click.prompt("Latitude", type=float)
     if not helpers.is_valid_latitude(latitude):
         click.echo('Invalid latitude. Latitude should be a decimal number between -90 and 90.')
         return
-    longitude = click.prompt("Longitude")
+    longitude = click.prompt("Longitude", type=float)
     if not helpers.is_valid_longitude(longitude):
         click.echo('Invalid longitude. Longitude should be a decimal number between -180 and 180.')
         return
+    bedrooms = click.prompt("Number of Bedrooms", type=int)
+
+    bathrooms = click.prompt("Number of Bathrooms", type=int)
     
-    price = click.prompt("Per Night Price")
+    price = click.prompt("Per Night Price", type=float)
 
     click.echo('Availability Range')
     start_date = click.prompt("Start Date (YYYY-MM-DD)")
@@ -346,10 +377,10 @@ def create_listing(ctx):
 
     
 
-    createListing_query = "INSERT INTO Listing (city, latitude, longitude, postalCode, country, type, address) VALUES (%s, %s, %s, %s, %s, %s, %s)"  # Use %s for all placeholders
-    db_cursor.execute(createListing_query, (city, latitude, longitude, postalCode, country, Ltype, address))
+    createListing_query = "INSERT INTO Listing (city, latitude, longitude, postalCode, country, type, address, bedrooms, bathrooms) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"  # Use %s for all placeholders
+    db_cursor.execute(createListing_query, (city, latitude, longitude, postalCode, country, Ltype, address, bedrooms, bathrooms))
 
-    db_connection.commit()
+    
 
     sin = ctx.obj["userSIN"]
     listing_id = db_cursor.lastrowid
@@ -362,7 +393,7 @@ def create_listing(ctx):
         addAmenities_query = "INSERT INTO ListingToAmenities (listingId, amenity) VALUES (%s, %s)"
         db_cursor.execute(addAmenities_query, (listing_id, choice))
 
-    hostToListing_query = "INSERT INTO HostCreatesListing (hostSIN, listingId) VALUES (%s, %s)"
+    hostToListing_query = "INSERT INTO UserCreatesListing (hostSIN, listingId) VALUES (%s, %s)"
     db_cursor.execute(hostToListing_query, (sin, listing_id))
 
     current_date = start_date
@@ -389,7 +420,7 @@ def delete_listing(ctx, all):
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     if all:
-        deleteListing_query = "DELETE FROM Listing WHERE listingId IN (SELECT listingId FROM HostCreatesListing WHERE hostSIN = %s)"
+        deleteListing_query = "DELETE FROM Listing WHERE listingId IN (SELECT listingId FROM UserCreatesListing WHERE hostSIN = %s)"
         db_cursor.execute(deleteListing_query, (sin,))
         db_connection.commit()
         db_cursor.close()
@@ -397,14 +428,13 @@ def delete_listing(ctx, all):
         print("Deleted all listings created by Username:", ctx.obj["username"])
         return
     
-    getAllListings_query = "SELECT listingId,city,latitude,longitude,postalCode,country,type,address FROM HostCreatesListing NATURAL JOIN Listing WHERE hostSIN = %s"
+    getAllListings_query = "SELECT listingId,city,latitude,longitude,postalCode,country,type,address FROM UserCreatesListing NATURAL JOIN Listing WHERE hostSIN = %s"
     db_cursor.execute(getAllListings_query, (sin,))
     result = db_cursor.fetchall()
     if len(result) == 0:
         click.echo("You have no listings.")
         return
     click.echo("Your listings:")
-    table = [["Sun",696000,1989100000],["Earth",6371,5973.6], ["Moon",1737,73.5],["Mars",3390,641.85]]
     print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"], tablefmt="grid"))
     
     keys=[]
@@ -425,14 +455,151 @@ def delete_listing(ctx, all):
     db_connection.commit()
     db_cursor.close()
     db_connection.close()
-   
+
+@cli.command()
+@click.pass_context
+def create_booking(ctx):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    sin = ctx.obj["userSIN"]
+    listingId = click.prompt("Listing ID of listing you want to book", type=int)
+    start_date = click.prompt("Start Date (YYYY-MM-DD)")
+    if(not helpers.is_valid_date(start_date)):
+        click.echo('Invalid Start Date format. Please use the format YYYY-MM-DD.')
+        return
+    end_date = click.prompt("End Date (YYYY-MM-DD)")
+    if(not helpers.is_valid_date(end_date)):
+        click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
+        return
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+
+    start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    if start_date > end_date:
+        click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
+        return
+    
+    gap=helpers.get_number_of_days_between(start_date, end_date)
+    print("Gap: " + str(gap))
+
+    result = getAvailableListingsForBooking(start_date, end_date, sin)
+    # print(result)
+
+    if len(result) == 0:
+        click.echo("No listings available in that date range.")
+        return
+    
+    keys=[]
+    for row in result:
+        keys.append(row[0])
+    
+    if listingId not in keys:
+        click.echo("Invalid listing ID.")
+        return
+
+
+    #add booking to bookings table
+    createBooking_query = "INSERT INTO BookedBy (startDate, endDate, renterSIN, listingId) VALUES (%s, %s, %s, %s)"
+    db_cursor.execute(createBooking_query, (start_date, end_date, sin, listingId))
+    booking_id = db_cursor.lastrowid
+    
+
+    #Update those availabilities from the availability table to be booked
+    updateAvailabilityToFalse_query = "UPDATE Availability SET isAvailable = 0 WHERE listingId = %s AND dateAvailable BETWEEN %s AND %s"
+    # removeAvailability_query = "DELETE FROM Availability WHERE listingId = %s AND dateAvailable BETWEEN %s AND %s"
+    db_cursor.execute(updateAvailabilityToFalse_query, (listingId, start_date, end_date))
+
+    db_connection.commit()
+        
+    db_cursor.close()
+    db_connection.close()
+    print("Congratulations! You have successfully booked this listing.")
+    print("Booking ID:", booking_id)
+
+
+
+@cli.command()
+@click.pass_context
+def delete_booking(ctx):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    sin = ctx.obj["userSIN"]
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    getAllBookings_query = "SELECT bookingId,startDate,endDate,listingId FROM BookedBy WHERE renterSIN = %s"
+    db_cursor.execute(getAllBookings_query, (sin,))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("You have no bookings.")
+        return
+    click.echo("Your bookings:")
+    print(tb.tabulate(result, headers=["bookingId", "startDate", "endDate", "renterSIN", "listingId"], tablefmt="grid"))
+    
+    keys=[]
+    for row in result:
+        keys.append(row[0])
+
+    # print(keys)
+    
+    booking_id = click.prompt("Please enter the ID of the booking you want to delete", type=int)
+
+    if booking_id not in keys:
+        click.echo("Invalid booking ID.")
+        return
+    
+        #add those availabilities back to the availability table
+    getBooking_query = "SELECT startDate, endDate, listingId FROM BookedBy WHERE bookingId = %s"
+    db_cursor.execute(getBooking_query, (booking_id,))
+    result = db_cursor.fetchone()
+
+    if result is None:
+        click.echo("Invalid booking ID.")
+        return
+
+
+    # print(result)
+
+    startDate = result[0]
+
+    endDate = result[1]
+
+    listingId = result[2]
+    # print("Listing ID: " + str(listingId))
+    # print("Start Date: " + str(startDate))
+    # print("End Date: " + str(endDate))
+
+
+    addAvailabilityToTrue_query = "UPDATE Availability SET isAvailable = 1 WHERE listingId = %s AND dateAvailable BETWEEN %s AND %s"
+    db_cursor.execute(addAvailabilityToTrue_query, (listingId, startDate, endDate))
+    
+    deleteBooking_query = "DELETE FROM BookedBy WHERE bookingId = %s"
+    db_cursor.execute(deleteBooking_query , (booking_id,))
+    print("Deleted booking ID:", str(booking_id))
+    db_connection.commit()
+    db_cursor.close()
+    db_connection.close()
+
+    
+
+
+    
+    
+    
+
+
+
+
   
 
 
 
 
 @cli.command()
-@click.option("--name", prompt="Your name", help="The person to greet.", type=int)
+@click.option("--name", prompt="Your name", help="The person to greet.")
 @click.pass_context
 def hello(ctx, name):
     click.echo("Hello %s!" % name)

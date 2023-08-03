@@ -26,3 +26,20 @@ def is_valid_date(date_str):
         return True
     except ValueError:
         return False
+
+def is_over_18(date_of_birth):
+    # Convert the date string to a datetime object
+    dob = datetime.strptime(date_of_birth, '%Y-%m-%d')
+
+    # Get the current date
+    current_date = datetime.now()
+
+    # Calculate the age by subtracting the birth year from the current year
+    age = current_date.year - dob.year - ((current_date.month, current_date.day) < (dob.month, dob.day))
+
+    # Check if the age is greater than or equal to 18
+    return age >= 18
+
+def get_number_of_days_between(start_date, end_date):
+    delta = end_date - start_date
+    return delta.days + 1
