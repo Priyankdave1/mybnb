@@ -57,6 +57,7 @@ def cli(ctx):
     ctx.obj["price_max"] = None
     ctx.obj["start_date"] = None
     ctx.obj["end_date"] = None
+    ctx.obj["sortByPrice"]=None
     user_Logged_in(ctx)
 
 
@@ -232,31 +233,41 @@ def logout(ctx):
 
 
 
-
+def checkAmenitiesList(amenities):
+    if len(amenities) == 0:
+        return True
+    for amenity in amenities:
+        if amenity not in ['Dishwasher','Stove','Oven','Dryer']:
+            return False
+    return True
 # --------------search----------------
+#add option for ascending or descending sort
+@click.option("--sortByPrice", "-s", help="Sort by price.",type=click.Choice(['asc','desc'],case_sensitive=False),default='asc')
+@click.option("--amenity", "-a", multiple=True, help="Amenity to filter by.",type=click.Choice(['Dishwasher','Stove','Oven','Dryer'],case_sensitive=False),default=[])
+@click.option("--price_min", "-pmin", help="Minimum price to filter by.")
+@click.option("--price_max", "-pmax", help="Maximum price to filter by.")
+@click.option("--start_date", help="Start date to filter by.", required=True,prompt=True)
+@click.option("--end_date", help="End date to filter by.", required=True,prompt=True)
 @cli.command()
 @click.pass_context
-def search_with_filters(ctx):
-    #search filters
-    amenities = []
-    price_min = None
-    price_max = None
-    start_date = None
-    end_date = None
-
-    start_date = click.prompt("Start Date (YYYY-MM-DD)")
+def search_with_filters(ctx, amenity, price_min, price_max, start_date, end_date, sortbyprice):
+    #search filters 
+    click.echo(sortbyprice)
+    ctx.obj['sortByPrice'] = sortbyprice
+    ctx.obj['amenities'] = list(amenity)
+    ctx.obj['price_min'] = price_min
+    ctx.obj['price_max'] = price_max
+    ctx.obj['start_date'] = start_date
+    ctx.obj['end_date'] = end_date
     if not helpers.is_valid_date(start_date):
         click.echo('Invalid Start Date format. Please use the format YYYY-MM-DD.')
         return
-    end_date = click.prompt("End Date (YYYY-MM-DD)")
     if not helpers.is_valid_date(end_date):
         click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
         return
     if start_date > end_date:
         click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
         return
-    ctx.obj['start_date'] = start_date
-    ctx.obj['end_date'] = end_date
     while True:
         click.echo('1. Search by postal code')
         click.echo('2. Search by address')
@@ -272,12 +283,14 @@ def search_with_filters(ctx):
         elif choice == 3:
             search.listingsInRange()
         elif choice == 4:
-            #validate input
-            amenities = click.prompt('Please enter amenities (comma-separated), :', type=click.STRING)
-             
+            amenitiesINP = click.prompt('Please enter amenities (comma-separated), :', type=click.STRING)
+            amenities = amenitiesINP.split(',')
+            if not checkAmenitiesList(amenities):
+                click.echo('Invalid amenities list. Please use the correct formant.')
+                return
             ctx.obj['amenities'] = amenities.split(',')
             ctx.obj['price_min'] = click.prompt('Please enter minimum price (Default = 0):', type=click.INT)
-            ctx.obj['price_max'] = click.prompt('Please enter maximum price (Default = ):', type=click.INT)
+            ctx.obj['price_max'] = click.prompt('Please enter maximum price (Default = MAX):', type=click.INT)
             ctx.obj['start_date'] = click.prompt('Please enter start date (YYYY-MM-DD):', type=click.STRING)
             ctx.obj['end_date'] = click.prompt('Please enter end date (YYYY-MM-DD):', type=click.STRING)
             if not helpers.is_valid_date(start_date):
@@ -286,12 +299,16 @@ def search_with_filters(ctx):
             if not helpers.is_valid_date(end_date):
                 click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
                 return
+            if start_date > end_date:
+                click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
+                return
+            ctx.obj['sortByPrice'] = click.prompt('Please enter sort order (asc/desc):', type=click.Choice(['asc','desc'],case_sensitive=False),default='asc') 
         elif choice == 5:
-            amenities = []
-            price_min = None
-            price_max = None
-            start_date = None
-            end_date = None
+            ctx.obj['sortByPrice'] = 'asc'
+            ctx.obj['amenities'] = []
+            ctx.obj['price_min'] = 0
+            ctx.obj['price_max'] = None
+            click.echo('Filters cleared. Start Date and End Date are still in effect, please change them if needed using option 4.')
         elif choice == 6:
             return
         else:

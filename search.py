@@ -15,6 +15,49 @@ def get_db_connection():
     except Exception as e:
         click.echo("Error: "+e)
         return None
+def merge2Lists(list1, list2):   
+    set1 = set(list1)
+    set2 = set(list2)
+    set3 = set1.intersection(set2)
+    return list(set3)
+    
+@click.pass_context
+def returnListingsWithPriceAndAvailability(ctx):
+    price_min = ctx.obj['price_min']
+    price_max = ctx.obj['price_max']
+    start_date = ctx.obj['start_date']
+    end_date = ctx.obj['end_date']
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    
+    query = "SELECT listingId, SUM(price) AS total_price FROM Availability WHERE dateAvailable BETWEEN %s AND %s and isAvailable = true GROUP BY listingId HAVING COUNT(DISTINCT dateAvailable) = DATEDIFF(%s, %s) + 1;"
+    db_cursor.execute(query, (start_date, end_date, end_date, start_date))
+    result = db_cursor.fetchall()
+    listingIds = []
+    total_prices = []
+    for row in result:
+        
+        if(price_min !=None and price_max != None):
+            if(row[1] >= price_min and row[1] <= price_max):
+                listingIds.append(row[0])
+                total_prices.append(row[1])
+        elif(price_min != None):
+            if(row[1] >= price_min):
+                listingIds.append(row[0])
+                total_prices.append(row[1])
+        elif(price_max != None):
+            if(row[1] <= price_max):
+                listingIds.append(row[0])
+                total_prices.append(row[1])
+        else:
+            listingIds.append(row[0])
+            total_prices.append(row[1])
+    if len(listingIds) == 0:
+        click.echo('-------------No listings found.-------------')
+        db_cursor.close()
+        return
+    return listingIds, total_prices
+
     
 @click.pass_context
 def returnListingsWithAmenities(ctx):
@@ -32,7 +75,7 @@ def returnListingsWithAmenities(ctx):
         for row in result:
             listingIds.append(row[0])
         if len(listingIds) == 0:
-            click.echo('No listings found.')
+            click.echo('-------------No listings found.-------------')
             db_cursor.close()
             return
         return listingIds
@@ -49,17 +92,40 @@ def search_listing_by_SimilarpostalCode(ctx):
         click.echo('Postal Code must not be empty.')
         return
     db_connection = get_db_connection()
-    db_cursor = db_connection.cursor()    
-
+    db_cursor = db_connection.cursor()   
+    listingIds = []
+    price_list = []
+    listingIds, price_list = returnListingsWithPriceAndAvailability()
+    dict = {}
+    
+    if(listingIds == None):
+        return
+    for i in range(len(listingIds)):
+        dict[listingIds[i]] = price_list[i] 
+    sql_query = 'SELECT * FROM Listing WHERE postalCode LIKE %s AND listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
+    
     if(amenities!= []):
         listingIds = returnListingsWithAmenities()
+        listingIds = merge2Lists(listingIds, returnListingsWithPriceAndAvailability()[0])
         sql_query = 'SELECT * FROM Listing WHERE postalCode LIKE %s AND listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
-        db_cursor.execute(sql_query, (postal_code[0:3]+'%',))
-        result = db_cursor.fetchall()
+    db_cursor.execute(sql_query, (postal_code[0:3]+'%',))
+    result = db_cursor.fetchall()
+    answer =[]
+    if len(result) == 0:
+        click.echo('-------------No listings found.-------------')
+        db_cursor.close()
+        return
+    else:
+        for row in result:
+            row1 = list(row)
+            row1.append(float(dict[row[0]]))
+            answer.append(row1)
         click.echo('Listings found:')
-        click.echo(tb.tabulate(result, headers=['id','city','latitude','longitude','postal code','country','type','address']))
-
-
+        if (ctx.obj['sortByPrice']=='asc'):
+            answer = sorted(answer, key=lambda x: x[9])
+        elif (ctx.obj['sortByPrice']=='desc'):
+            answer = sorted(answer, key=lambda x: x[9], reverse=True)
+        click.echo(tb.tabulate(answer, headers=['id','city','latitude','longitude','postal code','country','type','address','bedrooms','bathrooms','total price']))
 
         
 @click.pass_context
@@ -75,18 +141,26 @@ def search_by_address(ctx):
         return
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    sql_query = 'SELECT * FROM Listing WHERE address = %s'    
+    listingIds = []
+    price_list = []
+    listingIds, price_list = returnListingsWithPriceAndAvailability()
+    dict = {}
+
+    if(listingIds == None):
+        return
+    for i in range(len(listingIds)):
+        dict[listingIds[i]] = price_list[i]
+    sql_query = 'SELECT * FROM Listing WHERE address = %s AND listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
     if (amenities != []):
         listingIds = returnListingsWithAmenities()
+        listingIds = merge2Lists(listingIds, returnListingsWithPriceAndAvailability()[0])
         sql_query = 'SELECT * FROM Listing WHERE address = %s AND listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
-    
     db_cursor.execute(sql_query, (address,))
     result = db_cursor.fetchall()
     answer =[]
-    for row in result:
-        answer.append(row[1:])
+    
     if len(result) == 0:
-        click.echo('No listings found.')
+        click.echo('-------------No listings found.-------------')
         db_cursor.close()
         return
     elif len(result) > 1:
@@ -94,14 +168,19 @@ def search_by_address(ctx):
         db_cursor.close()
         return
     else:
+        for row in result:
+            row1=list(row)
+            row1.append(float(dict[row[0]]))
+            answer.append(row1)
+        if (ctx.obj['sortByPrice']=='asc'):
+            answer = sorted(answer, key=lambda x: x[9])
+        elif (ctx.obj['sortByPrice']=='desc'):
+            answer = sorted(answer, key=lambda x: x[9], reverse=True)
         click.echo('Listings found:')
-        click.echo(tb.tabulate(answer, headers=['city','latitude','longitude','postal code','country','type','address']))
+        click.echo(tb.tabulate(answer, headers=['id','city','latitude','longitude','postal code','country','type','address','bedrooms','bathrooms','total price']))
         db_cursor.close()
         return
-    
-    
-
-
+     
 @click.pass_context
 def listingsInRange(ctx):
     amenities = ctx.obj['amenities']
@@ -109,19 +188,7 @@ def listingsInRange(ctx):
     price_max = ctx.obj['price_max']
     start_date = ctx.obj['start_date']
     end_date = ctx.obj['end_date']
-    sortby = click.prompt("Sort by price or distance? (P/D)")
-    while sortby != 'P' or sortby != 'D':
-        click.echo('Please enter P or D.')
-        sortby = click.prompt("Sort by price or distance? (P/D)")
-    ascend_or_descend = click.prompt("Ascending or descending? (A/D)")
-    while ascend_or_descend != 'A' or ascend_or_descend != 'D':
-        click.echo('Please enter A or D.')
-        ascend_or_descend = click.prompt("Ascending or descending? (A/D)")
-    
-
-    if not ctx.obj['is_logged_in']:
-        click.echo('You are not logged in.')
-        return
+    sortbyDistance = click.prompt("Sort by distance? (Overides Price Sorting)",default='n',type=click.Choice(['y','n']))
     longitude = click.prompt("Longitude")
     if longitude.isdigit() == False or float(longitude) < -180 or float(longitude) > 180:
         click.echo('Longitude must be a number between -180 and 180.')
@@ -134,12 +201,23 @@ def listingsInRange(ctx):
     if rangeInKM.isdigit() == False or float(rangeInKM) < 0: 
         click.echo('Range must be a number greater than 0.')
         return
+    
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    sql_query = 'SELECT * FROM Listing'   
+    listingIds = []
+    price_list = []
+    listingIds,price_list = returnListingsWithPriceAndAvailability()
+    if(listingIds == None):
+        return
+    dict = {}
+    for i in range(len(listingIds)):
+        dict[listingIds[i]] = price_list[i]
+    sql_query = 'SELECT * FROM Listing WHERE listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
+    
     if (amenities != []):
         listingIds = returnListingsWithAmenities()
-        sql_query = 'SELECT * FROM Listing WHERE listingId IN (' + ', '.join(list(map(str, listingIds))) + ')' 
+        listingIds = merge2Lists(listingIds, returnListingsWithPriceAndAvailability()[0])
+        sql_query = 'SELECT * FROM Listing WHERE listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
     db_cursor.execute(sql_query)
     result = db_cursor.fetchall()
     listings_in_range_by_distance = []
@@ -150,26 +228,21 @@ def listingsInRange(ctx):
         if distance <= float(rangeInKM):
             row1 = list(row)
             row1.append(distance)
-            listings_in_range_by_distance.append(row1[1:])
+            row1.append(float(dict[row[0]]))
+            listings_in_range_by_distance.append(row1)
     if len(listings_in_range_by_distance) == 0:
         click.echo('No listings found within range.')
         db_cursor.close()
         return
     else:
+        if (sortbyDistance == 'y'):
+            listings_in_range_by_distance = sorted(listings_in_range_by_distance, key=lambda x: x[10])
+        elif (ctx.obj['sortByPrice']=='asc'):
+            listings_in_range_by_distance = sorted(listings_in_range_by_distance, key=lambda x: x[11])
+        elif (ctx.obj['sortByPrice']=='desc'):
+            listings_in_range_by_distance = sorted(listings_in_range_by_distance, key=lambda x: x[11], reverse=True)
         click.echo('Listings found within range:')
-        if sortby == 'P':
-            if ascend_or_descend == 'A':
-                listings_in_range_by_distance.sort(key=lambda x: x[4])
-            elif ascend_or_descend == 'D':
-                listings_in_range_by_distance.sort(key=lambda x: x[4], reverse=True)
-        elif sortby == 'D':
-            if ascend_or_descend == 'A':
-                listings_in_range_by_distance.sort(key=lambda x: x[7])
-            else: 
-                listings_in_range_by_distance.sort(key=lambda x: x[7], reverse=True)              
-    #remove
-        listings_in_range_by_distance.sort(key=lambda x: x[7])
-        click.echo(tb.tabulate(listings_in_range_by_distance, headers=['city','latitude','longitude','postal code','country','type','address','distance']))
+        click.echo(tb.tabulate(listings_in_range_by_distance, headers=['id','city','latitude','longitude','postal code','country','type','address','bedrooms','bathrooms','distance','total price']))
         db_cursor.close()
         return
 
