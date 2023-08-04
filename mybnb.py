@@ -5,18 +5,8 @@ import haversine as hs
 import tabulate as tb
 import helpers
 import search
-
-def get_db_connection():
-    try:
-        return mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='Password1$',
-            database='Airbnb'
-        )
-    except Exception as e:
-        click.echo("Error: "+e)
-        return None
+from db import get_db_connection
+import rateAndComment
 
 
 def getAvailableListingsForBooking(start_date, end_date, sin):
@@ -624,54 +614,35 @@ def delete_booking(ctx):
 
     
 @cli.command()
-@click.option("--listingId","-l", prompt="Listing ID", help="The listing ID of the listing you want to rate and comment on.",required=True,type=int)
+@click.option("--bookingId","-l", prompt="Booking ID", help="The booking ID of the listing you want to rate and comment on.",required=True,type=int)
 @click.pass_context
-def Rate_and_Comment_on_listing(ctx, listingid):
+def Rate_and_Comment_on_listing(ctx, bookingid):
+    
     if not ctx.obj["is_logged_in"]:
         click.echo("You are not logged in.")
         return
-    sin = ctx.obj["userSIN"]
-    db_connection = get_db_connection()
-    db_cursor = db_connection.cursor()
-    checkListing_query = "SELECT * FROM Listing WHERE listingId = %s"
-    db_cursor.execute(checkListing_query, (listingid,))
-    result = db_cursor.fetchone()
-    if result is None:
-        click.echo("Not a valid listingId.")
-        return
-    checkBooking_query = "SELECT * FROM BookedBy WHERE listingId = %s AND renterSIN = %s"
-    db_cursor.execute(checkBooking_query, (listingid,sin))
-    result = db_cursor.fetchone()
-    if result is None:
-        click.echo("This listing had never been booked by you.")
-        return
-    checkRating_query = "SELECT * FROM ListingReviewAndComments WHERE listingId = %s AND renterSIN = %s"
-    db_cursor.execute(checkRating_query, (listingid,sin))
-    result = db_cursor.fetchone()
-    if result is not None:
-        click.echo("You have already rated or commented on this listing.")
-        return
-    rating = click.prompt("Please enter a rating from 1 to 5")
-    if rating == "":
-        rating = None
-    elif rating < 1 or rating > 5:
-        click.echo("Invalid rating.")
-        return
-    comment = click.prompt("Please enter a comment about the listing.")
-    if comment == "":
-        comment = None
-    addRating_query = "INSERT INTO ListingReviewAndComments (listingId, renterSIN, rating, comment) VALUES (%s, %s, %s, %s)"
-    db_cursor.execute(addRating_query, (listingid,sin,rating,comment))
-    db_connection.commit()
-    db_cursor.close()
-    db_connection.close()
-    click.echo("Thank you for your rating and comment.")
-    return
+    rateAndComment.rate(bookingid)
 
 
-
-
+@cli.command()
+@click.pass_context
+@click.option("--accType", "-a", prompt="Comment or rate as a host or renter?", help="The type of account you want to comment or rate as.", type=click.Choice(["host", "renter"], case_sensitive=False))
+@click.option("--bookingId", "-b", prompt="Booking ID", help="The booking ID of the booking you want to rate and comment on.", type=int)
+def rate_and_comment_user(ctx, acctype,bookingid):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    if  (acctype == "host"):
+        rateAndComment.comment_as_host(bookingid)
+    elif (acctype == "renter"):
+        rateAndComment.comment_as_renter(bookingid)
+    else:
+        click.echo("Invalid account type.")
+        return
     
+
+
+
 
 
 

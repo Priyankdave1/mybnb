@@ -2,19 +2,8 @@ import click
 import tabulate as tb
 import  mysql.connector
 import haversine as hs
+from db import get_db_connection
 
-
-def get_db_connection():
-    try:
-        return mysql.connector.connect(
-            host='localhost',
-            user='root',
-            password='Password1$',
-            database='Airbnb'
-        )
-    except Exception as e:
-        click.echo("Error: "+e)
-        return None
 def merge2Lists(list1, list2):   
     set1 = set(list1)
     set2 = set(list2)
