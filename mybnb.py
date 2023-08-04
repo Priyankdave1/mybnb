@@ -333,7 +333,7 @@ def create_listing(ctx):
         click.echo('Address must be in the format: Number Street')
         return
     
-    Ltype = click.prompt("Type", type=str)
+    Ltype = click.prompt("Type", type=click.Choice(['Apartment', 'House', 'Room'], case_sensitive=False))
 
     Ltype = Ltype.lower()
     if Ltype not in ['apartment', 'house', 'room']:
@@ -624,15 +624,6 @@ def delete_booking(ctx):
 
     
 
-
-    
-    
-    
-
-
-
-
-  
 
 
 
