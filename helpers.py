@@ -51,3 +51,5 @@ def is_over_18(date_of_birth):
 def get_number_of_days_between(start_date, end_date):
     delta = end_date - start_date
     return delta.days + 1
+def todays_date():
+    return datetime.today().strftime('%Y-%m-%d')
