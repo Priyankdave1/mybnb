@@ -44,6 +44,7 @@ CREATE TABLE `User` (
 
 CREATE TABLE `Amenities` (
   `name` varchar(45) NOT NULL,
+  -- `price` decimal(20,2) NOT NULL ,
   PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -58,9 +59,9 @@ CREATE TABLE `Availability` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `BookedBy` (
-  `BookingId` int NOT NULL AUTO_INCREMENT,
-  `ListingId` int NOT NULL,
-  `RenterSIN` int NOT NULL,
+  `bookingId` int NOT NULL AUTO_INCREMENT,
+  `listingId` int NOT NULL,
+  `renterSIN` int NOT NULL,
   `startDate` date DEFAULT NULL,
   `endDate` date DEFAULT NULL,
   `isCancelled` tinyint NOT NULL DEFAULT '0',
