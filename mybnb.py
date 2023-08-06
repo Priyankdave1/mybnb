@@ -816,27 +816,6 @@ def update_availability(ctx):
     db_cursor.close()
     db_connection.close()
 
-
-    
-    #Write a query to check if that listing is in the table for those dates
-    # if it is then check if it's booked
-        # if it's booked then tell the user it's not available
-        # if it's not booked then update the availability
-    # if it's not in the table ask the user to add it to the table
-
-
-    #check that there is at least one day of entry in the availability table
-    #if not, then enter new entries
-    #if there is, then check for any non available days between those dates
-   
-    
-    
-
-    
-
-
-    #if it is available then update price or tell the user it's not available
-    
     
 @cli.command()
 @click.pass_context
