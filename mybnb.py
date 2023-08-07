@@ -1198,14 +1198,14 @@ def report3_host_ranking_by_listings_owned(ctx, country, city):
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     if city == None:
-        query = "select hostSIN, count(l.listingId) from Listing as l join UserCreatesListing as u where country = %s and l.listingId = u.listingId group by hostSIN order by hostSIN;"
+        query = "select firstName, lastName, count(l.listingId) from Listing as l join UserCreatesListing as u join User as y where country = %s and l.listingId = u.listingId and y.SIN = u.hostSIN group by hostSIN order by hostSIN;"
         db_cursor.execute(query, (country,))
     else:
-        query = "select hostSIN, count(l.listingId) from Listing as l join UserCreatesListing as u where country = %s and l.listingId = u.listingId and city = %s group by hostSIN order by hostSIN;"
+        query = "select firstName, lastName, count(l.listingId) from Listing as l join UserCreatesListing as u join User as y where country = %s and l.listingId = u.listingId and city = %s and y.SIN = u.hostSIN group by hostSIN order by hostSIN;"
         db_cursor.execute(query, (country, city))
     result = db_cursor.fetchall()
     for row in result:
-        click.echo(row[0])
+        click.echo(row[0] + " " + row[1])
     db_cursor.close()
     return
 
