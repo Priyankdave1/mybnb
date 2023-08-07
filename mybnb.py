@@ -592,7 +592,7 @@ def create_booking(ctx):
         click.echo("You are not logged in.")
         return
     sin = ctx.obj["userSIN"]
-    listingId = click.prompt("Listing ID of listing you want to book", type=int)
+
     start_date = click.prompt("Start Date (YYYY-MM-DD)")
     if not helpers.is_valid_date(start_date):
         click.echo(
@@ -615,10 +615,12 @@ def create_booking(ctx):
             "Invalid date range. Start Date should be earlier than or equal to End Date."
         )
         return
+    
+
 
     # doesn't include the users listings
     getNumAvailibilityInRange = """
-    SELECT listingId
+    SELECT L.listingId, L.city, L.latitude, L.longitude, L.postalCode, L.country, L.type, L.address, L.bedrooms, L.bathrooms
     FROM (
         SELECT listingId
         FROM Availability
@@ -627,8 +629,10 @@ def create_booking(ctx):
         HAVING COUNT(DISTINCT dateAvailable) = DATEDIFF(%s, %s) + 1
     ) AS availableListings
     NATURAL JOIN UserCreatesListing AS UCL
-    WHERE hostSIN != %s;
-"""
+    JOIN Listing AS L ON UCL.listingId = L.listingId
+    WHERE UCL.hostSIN != %s;
+    """
+
 
 
     db_cursor.execute(
@@ -639,10 +643,33 @@ def create_booking(ctx):
     if len(result) == 0:
         click.echo("No listings available in that date range.")
         return
+    
+    print("Available listings:")
+    #view the listings
+    print(
+        tb.tabulate(
+            result,
+            headers=[
+                "listingId",
+                "city",
+                "latitude",
+                "longitude",
+                "postalCode",
+                "country",
+                "type",
+                "address",
+                "bedrooms",
+                "bathrooms"
+            ],
+        )
+    )
+
 
     keys = []
     for row in result:
         keys.append(row[0])
+
+    listingId = click.prompt("Listing ID of listing you want to book", type=int)
 
     if listingId not in keys:
         click.echo("Invalid listing ID.")
@@ -904,7 +931,6 @@ def update_availability(ctx):
     for row in result:
         keys.append(row[0])
 
-    print(keys)
 
     listing_id = click.prompt(
         "Please enter the ID of the listing you want to update the availability",
@@ -983,9 +1009,9 @@ def update_availability(ctx):
             return
         current_date = start_date
         while current_date <= end_date:
-            addAvailability_query = "INSERT INTO Availability (listingId, dateAvailable, isAvailable, price) VALUES (%s, %s, %s, 1) ON DUPLICATE KEY UPDATE isAvailable = 1"
+            addAvailability_query = "INSERT INTO Availability (listingId, dateAvailable, isAvailable, price) VALUES (%s, %s, %s, 1) ON DUPLICATE KEY UPDATE isAvailable = 1, price = %s"
             db_cursor.execute(
-                addAvailability_query, (listing_id, current_date, new_price)
+                addAvailability_query, (listing_id, current_date, new_price, new_price)
             )
             current_date += timedelta(days=1)
         print("Added availability for listing ID:", str(listing_id))

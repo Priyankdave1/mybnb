@@ -1,4 +1,4 @@
-USE airbnb;
+use airbnb;
 SET FOREIGN_KEY_CHECKS = 0;
 SET GROUP_CONCAT_MAX_LEN=32768;
 SET @tables = NULL;
@@ -11,6 +11,20 @@ PREPARE stmt FROM @tables;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
 SET FOREIGN_KEY_CHECKS = 1;
+
+-- SET FOREIGN_KEY_CHECKS = 0;
+-- DROP TABLE IF EXISTS `listing`;
+-- DROP TABLE IF EXISTS `user`;
+-- DROP TABLE IF EXISTS `amenities`;
+-- DROP TABLE IF EXISTS `bookedBy`;
+-- DROP TABLE IF EXISTS `availability`;
+-- DROP TABLE IF EXISTS `userCreatesListing`;
+-- DROP TABLE IF EXISTS `listingToAmenities`;
+-- DROP TABLE IF EXISTS `userReviews`;
+-- DROP TABLE IF EXISTS `listingReviewAndComments`;
+-- SET FOREIGN_KEY_CHECKS = 1;
+
+
 
 
 CREATE TABLE `Listing` (
@@ -44,7 +58,7 @@ CREATE TABLE `User` (
 
 
 CREATE TABLE `Amenities` (
-  `name` varchar(45) NOT NULL,
+  `name` varchar(75) NOT NULL,
   `price` decimal(20,2) NOT NULL ,
   PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
@@ -99,7 +113,7 @@ CREATE TABLE `ListingReviewAndComments` (
 
 CREATE TABLE `ListingToAmenities` (
   `listingId` int NOT NULL,
-  `amenity` varchar(45) NOT NULL,
+  `amenity` varchar(75) NOT NULL,
   KEY `ListingFK_idx` (`ListingId`),
   KEY `AmenitiesFK` (`Amenity`),
   CONSTRAINT `AmenitiesFK` FOREIGN KEY (`Amenity`) REFERENCES `Amenities` (`name`) ON DELETE CASCADE,
@@ -142,7 +156,8 @@ VALUES
   ('Los Angeles', 34.0522, -118.2437, '90001', 'USA', 'House', '456 Elm St', 3, 2),
   ('Chicago', 41.8781, -87.6298, '60601', 'USA', 'Apartment', '789 Oak St, Apt 5', 1, 1),
   ('San Francisco', 37.7749, -122.4194, '94101', 'USA', 'House', '101 Pine St', 4, 3),
-  ('Miami', 25.7617, -80.1918, '33101', 'USA', 'Room', '222 Maple St, Room 3', 1, 1);
+  ('Miami', 25.7617, -80.1918, '33101', 'USA', 'Room', '222 Maple St, Room 3', 1, 1),
+  ('Leduc',45.000000,32.000000,'T0C0V0','Canada','house','121 Sparrow Street',3,3);
 
 
 INSERT INTO UserCreatesListing (hostSIN, listingId)
@@ -151,10 +166,10 @@ VALUES
   (254534643, 2),
   (254345255, 3),
   (646456643, 4),
-  (346646464, 5);
+  (346646464, 5),
+  (563533452, 6);
 
 
--- Insert statements for Availability table
 INSERT INTO Availability (dateAvailable, price, listingId)
 VALUES
   ('2023-08-01', 100.00, 1),
@@ -207,16 +222,55 @@ VALUES
   ('2023-09-17', 50.00, 5),
   ('2023-09-18', 50.00, 5),
   ('2023-09-19', 50.00, 5),
-  ('2023-09-20', 50.00, 5);
+  ('2023-09-20', 50.00, 5),
+  ('2024-02-10', 50.00, 6),
+  ('2024-02-11', 50.00, 6),
+  ('2024-02-12', 50.00, 6),
+  ('2024-02-13', 50.00, 6),
+  ('2024-02-14', 50.00, 6),
+  ('2024-02-15', 50.00, 6),
+  ('2024-02-16', 50.00, 6),
+  ('2024-02-17', 50.00, 6),
+  ('2024-02-18', 50.00, 6),
+  ('2024-02-19', 50.00, 6);
 
--- Insert statements for BookedBy table
+
+DELIMITER //
+
+CREATE PROCEDURE InsertAvailabilityInRange(
+    IN startDate DATE,
+    IN endDate DATE,
+    IN price DECIMAL(20, 2),
+    IN listingId INT
+)
+BEGIN
+    WHILE startDate <= endDate DO
+        INSERT INTO Availability (dateAvailable, price, listingId)
+        VALUES (startDate, price, listingId);
+        
+        SET startDate = DATE_ADD(startDate, INTERVAL 1 DAY);
+    END WHILE;
+END;
+//
+
+DELIMITER ;
+
+
+CALL InsertAvailabilityInRange('2024-02-20', '2024-03-05', 70.00, 6);
+
+
+
 INSERT INTO BookedBy (listingId, renterSIN, startDate, endDate, isCancelled, cancelledBy)
 VALUES
   (1, 646456643, '2023-08-01', '2023-08-05', 0, NULL),
+  (2, 563533452, '2023-12-19', '2023-12-19', 0, NULL),
+  (5,	563533452,	'2023-09-17',	'2023-09-20',	0, NULL);
 
 
 -- Update isAvailable to 0 for Listing 1
 UPDATE Availability SET isAvailable = 0 WHERE listingId = 1 AND dateAvailable BETWEEN '2023-08-01' AND '2023-08-05';
+UPDATE Availability SET isAvailable = 0 WHERE listingId = 2 AND dateAvailable BETWEEN '2023-12-19' AND '2023-12-19';
+UPDATE Availability SET isAvailable = 0 WHERE listingId = 5 AND dateAvailable BETWEEN '2023-09-17' AND '2023-09-20';
 
 
 INSERT INTO Amenities (name, price) VALUES ('Hair dryer', 5.00);
@@ -299,6 +353,16 @@ INSERT INTO ListingToAmenities (listingId, amenity) VALUES (5, 'Shower gel');
 INSERT INTO ListingToAmenities (listingId, amenity) VALUES (5, 'Towels, bed sheets, soap, and toilet paper');
 INSERT INTO ListingToAmenities (listingId, amenity) VALUES (5, 'Hangers');
 -- Add more amenities for listing 5
+INSERT INTO ListingToAmenities (listingId, amenity) VALUES
+(6,	'Body soap'),
+(6,	'Conditioner'),
+(6,	'Fast wifi'),
+(6,	'Hair dryer'),
+(6,	'Iron'),
+(6,	'Oven'),
+(6,	'Microwave'),
+(6,	'Toaster'),
+(6,	'Towels, bed sheets, soap, and toilet paper');
 
 
 
