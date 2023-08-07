@@ -8,6 +8,7 @@ import search
 from db import get_db_connection
 import rateAndComment
 import hostToolKit
+import spacy
 
 
 
@@ -1255,6 +1256,35 @@ def report6_most_cancellations(ctx, run_for):
     db_cursor.close()
     return
 
+@cli.command()
+@click.pass_context
+@click.option('--listingId', help='Listing ID', required=True, prompt = True)
+def report7_noun(ctx, listingid):
+    #get comments from db and store in comments dictionary with key as comment and value as num times
+    nlp = spacy.load("en_core_web_sm")
+    comments = {}
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    query = "SELECT comment FROM ListingReviewAndComments where listingId = %s;"
+    db_cursor.execute(query, (listingid,))
+    result = db_cursor.fetchall()
+    for row in result:
+        text = row[0]
+        doc =  nlp(text)
+        for noun in doc.noun_chunks:
+            if str(noun) in comments:
+                comments[str(noun)] += 1
+            else:
+                comments[str(noun)] = 1
+    click.echo("Commom Noun phrases for listing " + listingid + ":")
+    answer = []
+    for comment in comments:
+        if comments[comment] > 1:
+            answer.append([comment, comments[comment]])
+    answer.sort(key=lambda x: x[1], reverse=True)
+    click.echo(tb.tabulate(answer, headers=['Noun Phrase', 'Count']))
+    db_cursor.close()
+    return
 
 @cli.command()
 @click.pass_context
@@ -1273,4 +1303,5 @@ def hello(ctx):
 
 
 if __name__ == "__main__":
+    
     cli(obj={})
