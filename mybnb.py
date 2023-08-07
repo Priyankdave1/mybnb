@@ -952,7 +952,7 @@ def update_availability(ctx):
     start_date = click.prompt("Start Date (YYYY-MM-DD)")
     if not helpers.is_valid_date(start_date):
         click.echo(
-            "Invalid Start Date. Please use the format YYYY-MM-DD and make sure the date is not in the past"
+            "Invalid Start Date. Please use the format YYYY-MM-DD"
         )
         return
     end_date = click.prompt("End Date (YYYY-MM-DD)")

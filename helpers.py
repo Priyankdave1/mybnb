@@ -23,8 +23,6 @@ def is_valid_date(date_str):
     try:
         # Check if the input date string can be parsed into a valid date using the 'YYYY-MM-DD' format
         date = datetime.strptime(date_str, '%Y-%m-%d')
-        if(date<datetime.today()):
-            return False
         return True
     except ValueError:
         return False
