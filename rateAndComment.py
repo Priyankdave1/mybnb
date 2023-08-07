@@ -3,15 +3,15 @@ from db import get_db_connection
 
 @click.pass_context
 def comment_as_renter(ctx, bookingId):
-    sql_query = "SELECT * FROM BookedBy WHERE bookingId = %s AND renterSIN = %s"
+    sql_query = "SELECT * FROM BookedBy WHERE bookingId = %s AND renterSIN = %s AND endDate < CURDATE()"
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     db_cursor.execute(sql_query, (bookingId, ctx.obj["userSIN"]))
     result = db_cursor.fetchone()
     if result is None:
-        click.echo("Invalid booking ID.")
+        click.echo("Invalid booking ID or you have not checked out yet.")
         return
-    if result[5] ==1:
+    if result[5]==1:
         click.echo("You have cancelled this booking.")
         return
     listingID =  result[1]
@@ -42,7 +42,7 @@ def comment_as_renter(ctx, bookingId):
 
 @click.pass_context
 def comment_as_host(ctx,bookingid):
-    sql_query = "SELECT * FROM BookedBy WHERE bookingId = %s"
+    sql_query = "SELECT * FROM BookedBy WHERE bookingId = %s AND endDate < CURDATE()"
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     db_cursor.execute(sql_query, (bookingid,))
@@ -68,7 +68,7 @@ def comment_as_host(ctx,bookingid):
     
     sql_query = "INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating) VALUES (%s, %s, %s, %s)"
 
-    comment = click.prompt("Please enter a comment about the user., type=str, default="", show_default=False")
+    comment = click.prompt("Please enter a comment about the user.", type=str, default="", show_default=False)
     if comment == "":
         comment = None
     rating = click.prompt("Please enter a rating from 1 to 5",type=int,default=None, show_default=False)
@@ -87,11 +87,11 @@ def rate(ctx,bookingid):
     sin = ctx.obj["userSIN"]
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    checkListing_query = "SELECT * FROM BookedBy WHERE bookingId = %s AND renterSIN = %s"
+    checkListing_query = "SELECT * FROM BookedBy WHERE bookingId = %s AND renterSIN = %s AND endDate < CURDATE()"
     db_cursor.execute(checkListing_query, (bookingid, sin))
     result = db_cursor.fetchone()
     if result is None:
-        click.echo("Not a valid bookingId, or you are not the renter of this booking.")
+        click.echo("Not a valid bookingId, you are not the renter of this booking, or you have not checked out yet.")
         return
     if result[5] ==1:
         click.echo("You have cancelled this booking.")
