@@ -219,12 +219,16 @@ def logout(ctx):
 def checkAmenitiesList(amenities):
     if len(amenities) == 0:
         return True
-    query = "SELECT * FROM Amenity"
+    query = "SELECT name FROM Amenities"
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     db_cursor.execute(query)
     result = db_cursor.fetchall()
+    result = [x[0] for x in result]
+    
     db_cursor.close()
+    
+   
     for amenity in amenities:
         if amenity not in result:
             return False
@@ -259,7 +263,7 @@ def search_with_filters(
     ctx, amenity, price_min, price_max, start_date, end_date, sortbyprice
 ):
     # search filters
-    click.echo(sortbyprice)
+   
     ctx.obj["sortByPrice"] = sortbyprice
     ctx.obj["amenities"] = list(amenity)
     ctx.obj["price_min"] = price_min
@@ -285,9 +289,10 @@ def search_with_filters(
         click.echo("1. Search by postal code")
         click.echo("2. Search by address")
         click.echo("3. Search listing within range")
-        click.echo("4. Add/Change filters")
+        click.echo("4. Change filters")
         click.echo("5. Clear filters")
         click.echo("6. Back")
+        
         choice = click.prompt("Please select an option", type=int)
         if choice == 1:
             search.search_listing_by_SimilarpostalCode()
@@ -296,19 +301,37 @@ def search_with_filters(
         elif choice == 3:
             search.listingsInRange()
         elif choice == 4:
-            amenitiesINP = click.prompt(
-                "Please enter amenities (comma-separated), :", type=click.STRING
+            ctx.obj["sortByPrice"] = "asc"
+            ctx.obj["amenities"] = []
+            ctx.obj["price_min"] = 0
+            ctx.obj["price_max"] = None
+            click.echo(
+                "Filters cleared."
             )
-            amenities = amenitiesINP.split(",")
+            amenitiesINP = click.prompt(
+                "Please enter amenities (comma-separated), :", type=click.STRING, default=""
+            )
+            
+            if len(amenitiesINP) == 0:
+                amenities = []
+            elif ',' not in amenitiesINP:
+                amenities = [amenitiesINP]
+            else:
+                amenities = amenitiesINP.split(",")
+            
             if not checkAmenitiesList(amenities):
                 click.echo("Invalid amenities list. Please use the correct formant.")
                 return
-            ctx.obj["amenities"] = amenities.split(",")
+            if len(amenities) == 0:
+                ctx.obj["amenities"] = []
+            else:
+                ctx.obj["amenities"] = amenities
+           
             ctx.obj["price_min"] = click.prompt(
-                "Please enter minimum price (Default = 0):", type=click.INT
+                "Please enter minimum price (Default = 0):", type=click.INT, default=0
             )
             ctx.obj["price_max"] = click.prompt(
-                "Please enter maximum price (Default = MAX):", type=click.INT
+                "Please enter maximum price (Default = MAX):", type=click.INT, default=99999999999999999999
             )
             ctx.obj["start_date"] = click.prompt(
                 "Please enter start date (YYYY-MM-DD):", type=click.STRING

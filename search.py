@@ -44,7 +44,7 @@ def returnListingsWithPriceAndAvailability(ctx):
     if len(listingIds) == 0:
         click.echo('-------------No listings found.-------------')
         db_cursor.close()
-        return
+        return [],[]
     return listingIds, total_prices
 
     
@@ -66,7 +66,7 @@ def returnListingsWithAmenities(ctx):
         if len(listingIds) == 0:
             click.echo('-------------No listings found.-------------')
             db_cursor.close()
-            return
+            return       
         return listingIds
 
 @click.pass_context
@@ -87,7 +87,7 @@ def search_listing_by_SimilarpostalCode(ctx):
     listingIds, price_list = returnListingsWithPriceAndAvailability()
     dict = {}
     
-    if(listingIds == None):
+    if(listingIds == None or listingIds == []):
         return
     for i in range(len(listingIds)):
         dict[listingIds[i]] = price_list[i] 
@@ -95,8 +95,15 @@ def search_listing_by_SimilarpostalCode(ctx):
     
     if(amenities!= []):
         listingIds = returnListingsWithAmenities()
+        if listingIds == []:
+            click.echo('-------------No listings found.-------------')
+            return
         listingIds = merge2Lists(listingIds, returnListingsWithPriceAndAvailability()[0])
+        if(listingIds == []):
+            click.echo('-------------No listings found.-------------')
+            return
         sql_query = 'SELECT * FROM Listing WHERE postalCode LIKE %s AND listingId IN (' + ', '.join(list(map(str, listingIds))) + ')'
+    
     db_cursor.execute(sql_query, (postal_code[0:3]+'%',))
     result = db_cursor.fetchall()
     answer =[]
@@ -178,12 +185,12 @@ def listingsInRange(ctx):
     start_date = ctx.obj['start_date']
     end_date = ctx.obj['end_date']
     sortbyDistance = click.prompt("Sort by distance? (Overides Price Sorting)",default='n',type=click.Choice(['y','n']))
-    longitude = click.prompt("Longitude")
-    if longitude.isdigit() == False or float(longitude) < -180 or float(longitude) > 180:
+    longitude = click.prompt("Longitude",type=float)
+    if float(longitude) < -180 or float(longitude) > 180:
         click.echo('Longitude must be a number between -180 and 180.')
         return
-    latitude = click.prompt("Latitude")
-    if latitude.isdigit() == False or float(latitude) < -90 or float(latitude) > 90:
+    latitude = click.prompt("Latitude",type=float)
+    if float(latitude) < -90 or float(latitude) > 90:
         click.echo('Latitude must be a number between -90 and 90.')
         return
     rangeInKM = click.prompt("Range in Km (default: 500 Km)",default='500')
