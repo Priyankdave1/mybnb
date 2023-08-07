@@ -13,6 +13,8 @@ def getAvailableListingsForBooking(start_date, end_date, sin):
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
 
+
+
     # Add WHERE SIN != %s to exclude the user's own listings
     getNumAvailibilityInRange= """
          SELECT listingId
@@ -32,7 +34,13 @@ NATURAL JOIN UserCreatesListing;
     db_connection.close()
     return availableListings
 
-
+#Queries
+getAllYourListings_query = "SELECT listingId,city,latitude,longitude,postalCode,country,type,address FROM UserCreatesListing NATURAL JOIN Listing WHERE hostSIN = %s"
+isListingAvailable = """SELECT listingId
+    FROM Availability
+    WHERE dateAvailable BETWEEN %s AND %s AND isAvailable=1 AND listingId = %s
+    GROUP BY listingId
+    HAVING COUNT(DISTINCT dateAvailable) = DATEDIFF(%s, %s) + 1"""
 
 @click.group()
 @click.pass_context
@@ -353,20 +361,34 @@ def create_listing(ctx):
     if not helpers.is_valid_longitude(longitude):
         click.echo('Invalid longitude. Longitude should be a decimal number between -180 and 180.')
         return
-    bedrooms = click.prompt("Number of Bedrooms", type=int)
+    
+    bedrooms = 1
+    bathrooms = 1
+    if Ltype != 'room':    
+        bedrooms = click.prompt("Number of Bedrooms", type=int)
 
-    bathrooms = click.prompt("Number of Bathrooms", type=int)
+        bathrooms = click.prompt("Number of Bathrooms", type=int)
     
     price = click.prompt("Per Night Price", type=float)
+    if(price < 0):
+        click.echo("Invalid price.")
+        return
 
     click.echo('Availability Range')
     start_date = click.prompt("Start Date (YYYY-MM-DD)")
     if not helpers.is_valid_date(start_date):
-        click.echo('Invalid Start Date format. Please use the format YYYY-MM-DD.')
+        click.echo('Invalid Start Date. Please use the format YYYY-MM-DD and make sure the date is not in the past')
         return
     end_date = click.prompt("End Date (YYYY-MM-DD)")
     if not helpers.is_valid_date(end_date):
         click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
+        return
+    # Convert the strings to datetime objects for further comparison
+    start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
+    end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
+
+    if start_date > end_date:
+        click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
         return
     
     db_connection = get_db_connection()
@@ -397,13 +419,7 @@ def create_listing(ctx):
   
 
     
-    # Convert the strings to datetime objects for further comparison
-    start_date = datetime.strptime(start_date, '%Y-%m-%d').date()
-    end_date = datetime.strptime(end_date, '%Y-%m-%d').date()
 
-    if start_date > end_date:
-        click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
-        return
 
     
 
@@ -458,14 +474,14 @@ def delete_listing(ctx, all):
         print("Deleted all listings created by Username:", ctx.obj["username"])
         return
     
-    getAllListings_query = "SELECT listingId,city,latitude,longitude,postalCode,country,type,address FROM UserCreatesListing NATURAL JOIN Listing WHERE hostSIN = %s"
-    db_cursor.execute(getAllListings_query, (sin,))
+    
+    db_cursor.execute(getAllYourListings_query, (sin,))
     result = db_cursor.fetchall()
     if len(result) == 0:
         click.echo("You have no listings.")
         return
     click.echo("Your listings:")
-    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"], tablefmt="grid"))
+    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"]))
     
     keys=[]
     for row in result:
@@ -496,12 +512,13 @@ def create_booking(ctx):
     listingId = click.prompt("Listing ID of listing you want to book", type=int)
     start_date = click.prompt("Start Date (YYYY-MM-DD)")
     if(not helpers.is_valid_date(start_date)):
-        click.echo('Invalid Start Date format. Please use the format YYYY-MM-DD.')
+        click.echo('Invalid Start Date. Please use the format YYYY-MM-DD and make sure the date is not in the past')
         return
     end_date = click.prompt("End Date (YYYY-MM-DD)")
     if(not helpers.is_valid_date(end_date)):
         click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
         return
+    
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
 
@@ -512,8 +529,8 @@ def create_booking(ctx):
         click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
         return
     
-    gap=helpers.get_number_of_days_between(start_date, end_date)
-    print("Gap: " + str(gap))
+    # gap=helpers.get_number_of_days_between(start_date, end_date)
+    # print("Gap: " + str(gap))
 
     result = getAvailableListingsForBooking(start_date, end_date, sin)
     # print(result)
@@ -553,33 +570,53 @@ def create_booking(ctx):
 
 @cli.command()
 @click.pass_context
-def delete_booking(ctx):
+def cancel_booking(ctx):
     if not ctx.obj["is_logged_in"]:
         click.echo("You are not logged in.")
         return
     sin = ctx.obj["userSIN"]
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    getAllBookings_query = "SELECT bookingId,startDate,endDate,listingId FROM BookedBy WHERE renterSIN = %s"
+    cancel_as = click.prompt("Cancel booking as (host or renter)", type=str)
+    if cancel_as.lower() not in ["host", "renter"]:
+        click.echo("Invalid option.")
+        return
+    if cancel_as.lower() == "host":
+        getAllBookings_query = "SELECT bookingId,startDate,endDate,listingId FROM BookedBy NATURAL JOIN UserCreatesListing WHERE hostSIN = %s AND isCancelled = 0 AND startdate>CURDATE()"
+        
+    else:
+        getAllBookings_query = "SELECT bookingId,startDate,endDate,listingId FROM BookedBy WHERE renterSIN = %s AND isCancelled = 0 AND startdate>CURDATE()"
+
     db_cursor.execute(getAllBookings_query, (sin,))
     result = db_cursor.fetchall()
     if len(result) == 0:
         click.echo("You have no bookings.")
         return
     click.echo("Your bookings:")
-    print(tb.tabulate(result, headers=["bookingId", "startDate", "endDate", "renterSIN", "listingId"], tablefmt="grid"))
+    print(tb.tabulate(result, headers=["bookingId", "startDate", "endDate", "listingId"]))
     
     keys=[]
     for row in result:
         keys.append(row[0])
-
-    # print(keys)
     
     booking_id = click.prompt("Please enter the ID of the booking you want to delete", type=int)
 
     if booking_id not in keys:
         click.echo("Invalid booking ID.")
         return
+    
+    listingId = None
+    startDate = None
+    endDate = None
+
+    for row in result:
+        if row[0] == booking_id:
+            listingId = row[3]
+            startDate = row[1]
+            endDate = row[2]
+            break
+    
+        
     
         #add those availabilities back to the availability table
     getBooking_query = "SELECT startDate, endDate, listingId FROM BookedBy WHERE bookingId = %s"
@@ -590,24 +627,15 @@ def delete_booking(ctx):
         click.echo("Invalid booking ID.")
         return
 
-
-    # print(result)
-
     startDate = result[0]
-
     endDate = result[1]
-
     listingId = result[2]
-    # print("Listing ID: " + str(listingId))
-    # print("Start Date: " + str(startDate))
-    # print("End Date: " + str(endDate))
-
 
     addAvailabilityToTrue_query = "UPDATE Availability SET isAvailable = 1 WHERE listingId = %s AND dateAvailable BETWEEN %s AND %s"
     db_cursor.execute(addAvailabilityToTrue_query, (listingId, startDate, endDate))
     
-    deleteBooking_query = "DELETE FROM BookedBy WHERE bookingId = %s"
-    db_cursor.execute(deleteBooking_query , (booking_id,))
+    deleteBooking_query = "UPDATE BookedBy SET isCancelled = 1, cancelledBy=%s WHERE bookingId = %s"
+    db_cursor.execute(deleteBooking_query , (sin, booking_id))
     print("Deleted booking ID:", str(booking_id))
     db_connection.commit()
     db_cursor.close()
@@ -644,7 +672,225 @@ def rate_and_comment_user(ctx, acctype,bookingid):
 
 
 
+    
+@cli.command()
+@click.pass_context
+def view_booking(ctx):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    sin = ctx.obj["userSIN"]
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    getAllBookings_query = """
+    SELECT bookingId,startDate,endDate,city, latitude, longitude, postalCode, country, type, address, bedrooms, bathrooms
+    FROM(BookedBy JOIN Listing ON BookedBy.listingId = Listing.listingId)
+    WHERE RenterSIN = %s
+    """
+    db_cursor.execute(getAllBookings_query, (sin,))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("You have no bookings.")
+        return
+    click.echo("Your bookings:")
+    print(result)
+    print(tb.tabulate(result, headers=["bookingId", "startDate", "endDate", "city", "latitude", "longitude", "postalCode", "country", "type", "address", "bedrooms", "bathrooms"]))
+    db_cursor.close()
+    db_connection.close()
 
+
+
+
+@cli.command()
+@click.pass_context
+@click.option("--accType", "-a", prompt="Comment or rate as a host or renter?", help="The type of account you want to comment or rate as.", type=click.Choice(["host", "renter"], case_sensitive=False))
+@click.option("--bookingId", "-b", prompt="Booking ID", help="The booking ID of the booking you want to rate and comment on.", type=int)
+def rate_and_comment_user(ctx, acctype,bookingid):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    if  (acctype == "host"):
+        rateAndComment.comment_as_host(bookingid)
+    elif (acctype == "renter"):
+        rateAndComment.comment_as_renter(bookingid)
+    else:
+        click.echo("Invalid account type.")
+        return
+    
+
+
+
+    
+
+@cli.command()
+@click.pass_context
+def update_availability(ctx):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    sin = ctx.obj["userSIN"]
+    
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    
+    db_cursor.execute(getAllYourListings_query, (sin,))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("You have no listings.")
+        return
+    click.echo("Your listings:")
+    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"]))
+    
+    keys=[]
+    for row in result:
+        keys.append(row[0])
+
+    print(keys)
+    
+    listing_id = click.prompt("Please enter the ID of the listing you want to update the availability", type=int)
+
+    if listing_id not in keys:
+        click.echo("Invalid listing ID.")
+        return
+    
+    
+    type = click.prompt("Would you like to remove or insert availability? (Remove or Insert)", type=str)
+    type = type.lower()
+    if type not in ["remove", "insert"]:
+        click.echo("Invalid type.")
+        return
+    
+    start_date = click.prompt("Start Date (YYYY-MM-DD)")
+    if(not helpers.is_valid_date(start_date)):
+        click.echo('Invalid Start Date. Please use the format YYYY-MM-DD and make sure the date is not in the past')
+        return
+    end_date = click.prompt("End Date (YYYY-MM-DD)")
+    if(not helpers.is_valid_date(end_date)):
+        click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
+        return
+    start_date = datetime.strptime(start_date, '%Y-%m-%d')
+    end_date = datetime.strptime(end_date, '%Y-%m-%d')
+    if start_date > end_date:
+        click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
+        return
+    
+    isBooked_query = """
+            SELECT *
+            FROM BookedBy
+            WHERE
+                listingId = %s
+                AND isCancelled = 0
+                AND (
+                    (startDate <= %s AND endDate >= %s)
+                    OR (startDate BETWEEN %s AND %s)
+                    OR (endDate BETWEEN %s AND %s)
+                )
+            """
+    db_cursor.execute(isBooked_query, (listing_id, start_date, end_date, start_date, end_date, start_date, end_date))
+    result = db_cursor.fetchall()
+    if len(result) > 0:
+        click.echo("Listing is booked during this time. Please cancel the booking first.")
+        return
+    
+    if type == "remove":
+        db_cursor.execute(isListingAvailable, (start_date, end_date, listing_id, end_date, start_date))
+        result = db_cursor.fetchall()
+        if len(result) == 0:
+            click.echo("Listing is unavailable at this time already.")
+            return
+        removeAvailability_query = "UPDATE Availability SET isAvailable = 0 WHERE dateAvailable BETWEEN %s AND %s AND listingId = %s"
+        db_cursor.execute(removeAvailability_query, (start_date, end_date, listing_id))
+        print("Removed availability for listing ID:", str(listing_id))
+    else:
+        #check if the listing is booked during this time
+        new_price = click.prompt("New Price", type=float)
+        if(new_price < 0):
+            click.echo("Invalid price.")
+            return
+        current_date = start_date
+        while current_date <= end_date:
+            addAvailability_query = "INSERT INTO Availability (listingId, dateAvailable, isAvailable, price) VALUES (%s, %s, %s, 1) ON DUPLICATE KEY UPDATE isAvailable = 1"
+            db_cursor.execute(addAvailability_query, (listing_id, current_date, new_price))
+            current_date += timedelta(days=1)
+        print("Added availability for listing ID:", str(listing_id))
+    db_connection.commit()
+    db_cursor.close()
+    db_connection.close()
+
+    
+@cli.command()
+@click.pass_context
+def update_price(ctx):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
+        return
+    
+    
+    sin = ctx.obj["userSIN"]
+    
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    
+    db_cursor.execute(getAllYourListings_query, (sin,))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("You have no listings.")
+        return
+    click.echo("Your listings:")
+    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"]))
+    
+    keys=[]
+    for row in result:
+        keys.append(row[0])
+
+    print(keys)
+    
+    listing_id = click.prompt("Please enter the ID of the listing you want to update the price", type=int)
+
+    if listing_id not in keys:
+        click.echo("Invalid listing ID.")
+        return
+    
+    start_date = click.prompt("Start Date (YYYY-MM-DD)")
+    if(not helpers.is_valid_date(start_date)):
+        click.echo('Invalid Start Date. Please use the format YYYY-MM-DD and make sure the date is not in the past')
+        return
+    end_date = click.prompt("End Date (YYYY-MM-DD)")
+    if(not helpers.is_valid_date(end_date)):
+        click.echo('Invalid End Date format. Please use the format YYYY-MM-DD.')
+        return
+    if start_date > end_date:
+        click.echo('Invalid date range. Start Date should be earlier than or equal to End Date.')
+        return
+
+    #Write a query to check if that listing is Available during those dates
+    
+    db_cursor.execute(isListingAvailable, (start_date, end_date, listing_id, end_date, start_date))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("Listing is not available during those dates.")
+        return
+    
+
+    #if it is available then update price or tell the user it's not available
+    new_price = click.prompt("New Price", type=float)
+    if(new_price < 0):
+        click.echo("Invalid price.")
+        return
+    updatePrice_query = "UPDATE Availability SET price = %s WHERE listingId = %s AND dateAvailable BETWEEN %s AND %s"
+    db_cursor.execute(updatePrice_query, (new_price, listing_id, start_date, end_date))
+
+    db_connection.commit()
+    db_cursor.close()
+    db_connection.close()
+    
+
+
+
+    
+
+    
+    
 
 
 

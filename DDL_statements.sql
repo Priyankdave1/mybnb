@@ -44,6 +44,7 @@ CREATE TABLE `User` (
 
 CREATE TABLE `Amenities` (
   `name` varchar(45) NOT NULL,
+  `price` decimal(20,2) NOT NULL ,
   PRIMARY KEY (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
@@ -58,9 +59,9 @@ CREATE TABLE `Availability` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 CREATE TABLE `BookedBy` (
-  `BookingId` int NOT NULL AUTO_INCREMENT,
-  `ListingId` int NOT NULL,
-  `RenterSIN` int NOT NULL,
+  `bookingId` int NOT NULL AUTO_INCREMENT,
+  `listingId` int NOT NULL,
+  `renterSIN` int NOT NULL,
   `startDate` date DEFAULT NULL,
   `endDate` date DEFAULT NULL,
   `isCancelled` tinyint NOT NULL DEFAULT '0',
@@ -120,10 +121,38 @@ CREATE TABLE `UserReviews` (
 INSERT INTO User(SIN, address, occupation, dob, firstName, lastName, username, password) VALUES (111111111, 'Zesty Lane', 'Job', '1111-11-11', 'Yank', 'Moment', 'youjustgotpriyanked', 'password');
 
 
-INSERT INTO Amenities (name) VALUES ('Washer');
-INSERT INTO Amenities (name) VALUES ('Dryer');
-INSERT INTO Amenities (name) VALUES ('Dishwasher');
-INSERT INTO Amenities (name) VALUES ('Microwave');
-INSERT INTO Amenities (name) VALUES ('Oven');
-INSERT INTO Amenities (name) VALUES ('Stove');
-INSERT INTO Amenities (name) VALUES ('Refrigerator');
+INSERT INTO Amenities (name, price) VALUES ('Hair dryer', 5.00);
+INSERT INTO Amenities (name, price) VALUES ('Cleaning products', 3.50);
+INSERT INTO Amenities (name, price) VALUES ('Shampoo', 4.00);
+INSERT INTO Amenities (name, price) VALUES ('Conditioner', 4.00);
+INSERT INTO Amenities (name, price) VALUES ('Body soap', 3.00);
+INSERT INTO Amenities (name, price) VALUES ('Hot water', 0.00);
+INSERT INTO Amenities (name, price) VALUES ('Shower gel', 4.50);
+INSERT INTO Amenities (name, price) VALUES ('Essentials', 5.00);
+INSERT INTO Amenities (name, price) VALUES ('Towels, bed sheets, soap, and toilet paper', 6.50);
+INSERT INTO Amenities (name, price) VALUES ('Hangers', 2.50);
+INSERT INTO Amenities (name, price) VALUES ('Bed linens', 5.50);
+INSERT INTO Amenities (name, price) VALUES ('Extra pillows and blankets', 4.00);
+INSERT INTO Amenities (name, price) VALUES ('Room-darkening shades', 2.50);
+INSERT INTO Amenities (name, price) VALUES ('Iron', 3.50);
+INSERT INTO Amenities (name, price) VALUES ('Smoke alarm', 1.00);
+INSERT INTO Amenities (name, price) VALUES ('Carbon monoxide alarm', 0.50);
+INSERT INTO Amenities (name, price) VALUES ('Fire extinguisher', 1.00);
+INSERT INTO Amenities (name, price) VALUES ('Fast wifi', 4.00);
+INSERT INTO Amenities (name, price) VALUES ('Refrigerator', 4.00);
+INSERT INTO Amenities (name, price) VALUES ('Microwave', 3.00);
+INSERT INTO Amenities (name, price) VALUES ('Cooking basics', 2.00);
+INSERT INTO Amenities (name, price) VALUES ('Dishes and silverware', 2.00);
+INSERT INTO Amenities (name, price) VALUES ('Freezer', 3.00);
+INSERT INTO Amenities (name, price) VALUES ('Oven', 4.00);
+INSERT INTO Amenities (name, price) VALUES ('Hot water kettle', 1.00);
+INSERT INTO Amenities (name, price) VALUES ('Coffee maker', 1.00);
+INSERT INTO Amenities (name, price) VALUES ('Wine glasses', 1.00);
+INSERT INTO Amenities (name, price) VALUES ('Toaster', 2.00);
+INSERT INTO Amenities (name, price) VALUES ('Barbecue utensils', 1.00);
+INSERT INTO Amenities (name, price) VALUES ('Grill, charcoal, bamboo skewers/iron skewers, etc.', 2.00);
+INSERT INTO Amenities (name, price) VALUES ('Dining table', 6.00);
+INSERT INTO Amenities (name, price) VALUES ('Private entrance', 5.00);
+INSERT INTO Amenities (name, price) VALUES ('Free parking on premises', 5.00);
+INSERT INTO Amenities (name, price) VALUES ('Free street parking', 3.00);
+

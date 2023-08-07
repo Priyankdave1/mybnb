@@ -22,10 +22,18 @@ def is_valid_longitude(longitude):
 def is_valid_date(date_str):
     try:
         # Check if the input date string can be parsed into a valid date using the 'YYYY-MM-DD' format
-        datetime.strptime(date_str, '%Y-%m-%d')
+        date = datetime.strptime(date_str, '%Y-%m-%d')
+        if(date<datetime.today()):
+            return False
         return True
     except ValueError:
         return False
+
+def not_in_future(date_str):
+    date = datetime.strptime(date_str, '%Y-%m-%d')
+    if(date<datetime.today()):
+        return False
+    return True
 
 def is_over_18(date_of_birth):
     # Convert the date string to a datetime object
