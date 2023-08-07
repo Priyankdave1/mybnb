@@ -219,16 +219,14 @@ def logout(ctx):
 def checkAmenitiesList(amenities):
     if len(amenities) == 0:
         return True
+    query = "SELECT * FROM Amenity"
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    db_cursor.execute(query)
+    result = db_cursor.fetchall()
+    db_cursor.close()
     for amenity in amenities:
-        if amenity not in [
-            "Dishwasher",
-            "Dryer",
-            "Microwave",
-            "Oven",
-            "Refrigerator",
-            "Stove",
-            "Washer",
-        ]:
+        if amenity not in result:
             return False
     return True
 
@@ -247,19 +245,6 @@ def checkAmenitiesList(amenities):
     "-a",
     multiple=True,
     help="Amenity to filter by.",
-    type=click.Choice(
-        [
-            "Dishwasher",
-            "Stove",
-            "Oven",
-            "Dryer",
-            "Microwave",
-            "Oven",
-            "Refrigerator",
-            "Washer",
-        ],
-        case_sensitive=False,
-    ),
     default=[],
 )
 @click.option("--price_min", "-pmin", help="Minimum price to filter by.")
@@ -281,6 +266,10 @@ def search_with_filters(
     ctx.obj["price_max"] = price_max
     ctx.obj["start_date"] = start_date
     ctx.obj["end_date"] = end_date
+    
+    if checkAmenitiesList(ctx.obj["amenities"]) == False:
+        click.echo("Invalid amenity.")
+        return
     if not helpers.is_valid_date(start_date):
         click.echo("Invalid Start Date format. Please use the format YYYY-MM-DD.")
         return
@@ -1286,7 +1275,6 @@ def report6_most_cancellations(ctx, run_for):
 @click.pass_context
 @click.option('--listingId', help='Listing ID', required=True, prompt = True)
 def report7_noun(ctx, listingid):
-    #get comments from db and store in comments dictionary with key as comment and value as num times
     nlp = spacy.load("en_core_web_sm")
     comments = {}
     db_connection = get_db_connection()
