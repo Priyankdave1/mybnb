@@ -107,9 +107,9 @@ def register():
         )
         return
     sin = click.prompt("SIN (9 digits)")
-    # if len(sin) != 9 or not sin.isdigit():
-    #     click.echo('SIN must be 9 digits long.')
-    #     return
+    if len(sin) != 9 or not sin.isdigit():
+        click.echo('SIN must be 9 digits long.')
+        return
     username = click.prompt("Username")
     if len(username) == 0:
         click.echo("Username must not be empty.")
@@ -227,13 +227,14 @@ def checkAmenitiesList(amenities):
     if len(amenities) == 0:
         return True
     for amenity in amenities:
-        if amenity not in ['Dishwasher','Stove','Oven','Dryer']:
+
+        if amenity not in ['Dishwasher','Dryer','Microwave','Oven','Refrigerator','Stove','Washer']:
             return False
     return True
 # --------------search----------------
 #add option for ascending or descending sort
 @click.option("--sortByPrice", "-s", help="Sort by price.",type=click.Choice(['asc','desc'],case_sensitive=False),default='asc')
-@click.option("--amenity", "-a", multiple=True, help="Amenity to filter by.",type=click.Choice(['Dishwasher','Stove','Oven','Dryer'],case_sensitive=False),default=[])
+@click.option("--amenity", "-a", multiple=True, help="Amenity to filter by.",type=click.Choice(['Dishwasher','Stove','Oven','Dryer', 'Microwave','Oven','Refrigerator','Washer'],case_sensitive=False),default=[])
 @click.option("--price_min", "-pmin", help="Minimum price to filter by.")
 @click.option("--price_max", "-pmax", help="Maximum price to filter by.")
 @click.option("--start_date", help="Start date to filter by.", required=True,prompt=True)
@@ -649,11 +650,148 @@ def rate_and_comment_user(ctx, acctype,bookingid):
 
 
 
+@click.option('--start_date', help='Start date', required=True, type=click.DateTime(['%Y-%m-%d']), prompt=True)
+@click.option('--end_date', help='End date', required=True, type=click.DateTime(['%Y-%m-%d']), prompt=True)
+@click.option('--searchBy', default='city',type = click.Choice(['city','postalcode'],case_sensitive=False), help='Search by city or postal code', required=True, prompt=True)
 @cli.command()
-@click.option("--name", prompt="Your name", help="The person to greet.")
+def report1_num_bookings_by_city_postalcode(start_date, end_date, searchby):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    if (searchby == 'city'):
+        city = click.prompt("Please enter the city", type=str)
+        query = "select count(b.bookingId) from BookedBy as b join Listing as l on b.listingId = l.listingId where startDate >= %s and endDate <= %s and city = %s group by city;"
+        db_cursor.execute(query, (start_date, end_date, city))
+    else:
+        postalcode = click.prompt("Please enter the postal code", type=str)
+        if(len(postalcode) != 6 or not postalcode[0].isalpha() or not postalcode[1].isdigit() or not postalcode[2].isalpha() or not postalcode[3].isdigit() or not postalcode[4].isalpha() or not postalcode[5].isdigit()):
+            click.echo("Invalid postal code.")
+            return
+        query = "select count(b.bookingId) from BookedBy as b join Listing as l on b.listingId = l.listingId where startDate >= %s and endDate <= %s and postalcode = %s group by city;"
+        db_cursor.execute(query, (start_date, end_date, postalcode))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("No results found.")
+        return
+    for row in result:
+        click.echo(row[0])
+    db_cursor.close()
+    return
+
+@cli.command()
 @click.pass_context
-def hello(ctx, name):
-    click.echo("Hello %s!" % name)
+@click.option('--country', help='Country', required=True)
+@click.option('--city', default=None, help='City', required=False)
+@click.option('--postalcode', default=None, help='Postal Code', required=False)
+def report2_num_listings_in_area(ctx, country, city, postalcode):
+    
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    if (city == None and postalcode == None):
+        query = "select count(listingId) from Listing where country = %s group by country;"
+        db_cursor.execute(query, (country,))
+    elif (postalcode == None):
+        query = "select count(listingId) from Listing where country = %s and city = %s group by country, city;"
+        db_cursor.execute(query, (country, city))
+    else:
+        if (len(postalcode) !=6 or not postalcode[0].isalpha() or not postalcode[1].isdigit() or not postalcode[2].isalpha() or not postalcode[3].isdigit() or not postalcode[4].isalpha() or not postalcode[5].isdigit()):
+            click.echo("Invalid postal code.")
+            return
+        query = "select count(listingId) from Listing where country = %s and city = %s and postalcode = %s group by country, city, postalcode;"
+        db_cursor.execute(query, (country, city, postalcode))
+
+    result = db_cursor.fetchall()
+    for row in result:
+        click.echo(row[0])
+    db_cursor.close()
+    return
+
+@cli.command()
+@click.pass_context
+@click.option('--country', help='Country', required=True)
+@click.option('--city', default=None, help='City', required=False)
+def report3_host_ranking_by_listings_owned(ctx, country, city ):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    if (city == None):
+        query = "select hostSIN, count(l.listingId) from Listing as l join UserCreatesListing as u where country = %s and l.listingId = u.listingId group by hostSIN order by hostSIN;"
+        db_cursor.execute(query, (country,))
+    else:
+        query = "select hostSIN, count(l.listingId) from Listing as l join UserCreatesListing as u where country = %s and l.listingId = u.listingId and city = %s group by hostSIN order by hostSIN;"
+        db_cursor.execute(query, (country, city))
+    result = db_cursor.fetchall()
+    for row in result:
+        click.echo(row[0])
+    db_cursor.close()
+    return
+
+
+@cli.command()
+@click.pass_context
+@click.option('--country', help='Country', required=True)
+@click.option('--city', default=None, help='City', required=False)
+def report4_possible_commercial_hosts(ctx, country, city ):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    if (city == None ):
+        query = "select u.hostSIN, count(l.listingId) as num_listings from Listing as l join UserCreatesListing as u on l.listingId = u.listingId join (select count(listingId) as listings, city, country from Listing where country = %s group by country, city) as m on l.country = m.country and l.city = m.city group by u.hostSIN, m.listings having count(l.listingId) >= (m.listings * 0.1) order by u.hostSIN;"
+        db_cursor.execute(query, (country,))
+    else:
+        query = "select u.hostSIN, count(l.listingId) as num_listings from Listing as l join UserCreatesListing as u on l.listingId = u.listingId join (select count(listingId) as listings, city, country from Listing where country = %s and city = %s group by country, city) as m on l.country = m.country and l.city = m.city group by u.hostSIN, m.listings having count(l.listingId) >= (m.listings * 0.1) order by u.hostSIN;"
+        db_cursor.execute(query, (country, city))
+    result = db_cursor.fetchall()
+    for row in result:
+        click.echo(row[0])
+    db_cursor.close()
+    return
+
+
+@cli.command()
+@click.pass_context
+@click.option('--start_date', help='Start Date', required=True)
+@click.option('--end_date', help='End Date', required=True)
+@click.option('--city', default=None, help='City', required=False)
+def report5_rank_renters_by_num_bookings(ctx, start_date, end_date, city):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    if (city == None):
+        query = "select firstName, lastName, count(b.bookingId) as 'Number of Bookings' from BookedBy as b join User as l on b.renterSIN = l.SIN where startDate >= %s and endDate <= %s group by renterSIN order by 'Number of Bookings';"
+        db_cursor.execute(query, (start_date, end_date))
+    else:
+        query = "select firstName, lastName, count(b.bookingId) as 'Number of Bookings' from BookedBy as b join User as u on b.renterSIN = u.SIN join Listing as l on b.listingId = l.listingId where startDate >= %s and endDate <= %s and city = %s and 'Number of Bookings' >= 2 group by renterSIN order by 'Number of Bookings';"
+        db_cursor.execute(query, (start_date, end_date, city))
+    result = db_cursor.fetchall()
+    for row in result:
+        click.echo(row[0])
+    db_cursor.close()
+    return
+
+
+@cli.command()
+@click.pass_context
+@click.option('--run_for', help='Run For', required=True, type=click.Choice(['host', 'renter']))
+def report6_most_cancellations(ctx, run_for):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    if (run_for == 'renter'):
+        query = "select distinct firstName, lastName, count(BookingId) as 'Number of Bookings' from BookedBy, User where startDate >= year(curdate()) and isCancelled = true and renterSIN = cancelledBy and cancelledBy = SIN group by cancelledBy order by 'Number of Bookings';"
+        db_cursor.execute(query)
+    else:
+        query = "select distinct firstName, lastName, count(BookingId) as 'Number of Bookings' from BookedBy, User where startDate >= year(curdate()) and isCancelled = true and renterSIN != cancelledBy and cancelledBy = SIN group by cancelledBy order by 'Number of Bookings';"
+        db_cursor.execute(query)
+    result = db_cursor.fetchall()
+    for row in result:
+        click.echo(row[0])
+    db_cursor.close()
+    return
+
+
+
+
+
+@cli.command()
+@click.pass_context
+def hello(ctx):
+    click.echo("Hello %s!" % ctx.obj['username'])
 
 
 if __name__ == "__main__":
