@@ -1307,11 +1307,11 @@ def report7_noun(ctx, listingid):
     comments = {}
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
-    query = "SELECT comment FROM ListingReviewAndComments where listingId = %s;"
+    query = "SELECT * FROM airbnb.ListingReviewAndComments as l join BookedBy as b on l.bookingId = b.bookingId where listingId = %s;"
     db_cursor.execute(query, (listingid,))
     result = db_cursor.fetchall()
     for row in result:
-        text = row[0]
+        text = row[2]
         doc =  nlp(text)
         for noun in doc.noun_chunks:
             if str(noun) in comments:

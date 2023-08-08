@@ -130,6 +130,7 @@ def getPriceWithAmenities(listing):
     for amenity in result:
         if amenity[0] in selected_choices:
             suggestedPrice = suggestedPrice + amenity[1]
+            click.echo("Added "+amenity[0]+" to listing, price increased by "+str(amenity[1])+" per day.")
     return suggestedPrice
 
 
