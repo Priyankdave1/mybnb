@@ -91,7 +91,7 @@ CREATE TABLE `BookedBy` (
   KEY `FKlistingID_idx` (`ListingId`),
   KEY `RenterFK_idx` (`RenterSIN`),
   KEY `cancelledByFK_idx` (`cancelledBy`),
-  CONSTRAINT `cancelledByFK` FOREIGN KEY (`cancelledBy`) REFERENCES `User` (`SIN`),
+  CONSTRAINT `cancelledByFK` FOREIGN KEY (`cancelledBy`) REFERENCES `User` (`SIN`) ON DELETE CASCADE,
   CONSTRAINT `FKlistingID` FOREIGN KEY (`ListingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
   CONSTRAINT `RenterFK` FOREIGN KEY (`RenterSIN`) REFERENCES `User` (`SIN`)
 )  ;
