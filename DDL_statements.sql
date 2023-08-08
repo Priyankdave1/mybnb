@@ -95,7 +95,7 @@ CREATE TABLE `UserCreatesListing` (
   `hostSIN` int NOT NULL,
   `listingId` int NOT NULL,
   KEY `hostFK_idx` (`hostSIN`),
-  KEY `listingFK_idx` (`listingId`),
+  PRIMARY  KEY `listingFK_idx` (`listingId`),
   CONSTRAINT `FKtoListing` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
   CONSTRAINT `hostFK` FOREIGN KEY (`hostSIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

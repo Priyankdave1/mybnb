@@ -236,7 +236,7 @@ def checkAmenitiesList(amenities):
 
 
 # --------------search----------------
-# add option for ascending or descending sort
+
 @click.option(
     "--sortByPrice",
     "-s",
@@ -1154,12 +1154,6 @@ def report1_num_bookings_by_city_postalcode(start_date, end_date, searchby):
         postalcode = click.prompt("Please enter the postal code", type=str)
         if (
             len(postalcode) != 6
-            or not postalcode[0].isalpha()
-            or not postalcode[1].isdigit()
-            or not postalcode[2].isalpha()
-            or not postalcode[3].isdigit()
-            or not postalcode[4].isalpha()
-            or not postalcode[5].isdigit()
         ):
             click.echo("Invalid postal code.")
             return
@@ -1169,8 +1163,8 @@ def report1_num_bookings_by_city_postalcode(start_date, end_date, searchby):
     if len(result) == 0:
         click.echo("No results found.")
         return
-    for row in result:
-        click.echo(row[0])
+    
+    click.echo(tb.tabulate(result, headers=["Number of Bookings"]))
     db_cursor.close()
     return
 
@@ -1194,12 +1188,6 @@ def report2_num_listings_in_area(ctx, country, city, postalcode):
     else:
         if (
             len(postalcode) != 6
-            or not postalcode[0].isalpha()
-            or not postalcode[1].isdigit()
-            or not postalcode[2].isalpha()
-            or not postalcode[3].isdigit()
-            or not postalcode[4].isalpha()
-            or not postalcode[5].isdigit()
         ):
             click.echo("Invalid postal code.")
             return
@@ -1207,8 +1195,11 @@ def report2_num_listings_in_area(ctx, country, city, postalcode):
         db_cursor.execute(query, (country, city, postalcode))
 
     result = db_cursor.fetchall()
-    for row in result:
-        click.echo(row[0])
+    if len(result) == 0:
+        click.echo("No results found.")
+        return
+    
+    click.echo(tb.tabulate(result, headers=["Number of Listings"]))
     db_cursor.close()
     return
 
@@ -1227,8 +1218,10 @@ def report3_host_ranking_by_listings_owned(ctx, country, city):
         query = "select firstName, lastName, count(l.listingId) from Listing as l join UserCreatesListing as u join User as y where country = %s and l.listingId = u.listingId and city = %s and y.SIN = u.hostSIN group by hostSIN order by hostSIN;"
         db_cursor.execute(query, (country, city))
     result = db_cursor.fetchall()
-    for row in result:
-        click.echo(row[0] + " " + row[1])
+    if len(result) == 0:
+        click.echo("No results found.")
+        return
+    click.echo(tb.tabulate(result, headers=["First Name", "Last Name", "Number of Listings"]))
     db_cursor.close()
     return
 
