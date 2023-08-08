@@ -16,7 +16,7 @@ def view_booking_as_renter(sin):
         click.echo("You have no bookings.")
         return
     click.echo("Your bookings:")
-    print(result)
+    
     print(
         tb.tabulate(
             result,
@@ -53,7 +53,7 @@ def view_booking_as_host(sin):
         click.echo("You have no bookings.")
         return
     click.echo("Your bookings:")
-    print(result)
+    
     print(
         tb.tabulate(
             result,
@@ -100,8 +100,14 @@ def comment_as_renter(ctx, bookingId):
         click.echo("Invalid listing ID.")
         return
     host_sin = result[0]
-
-    sql_query = "INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating) VALUES (%s, %s, %s, %s)"
+    sql_query = "SELECT * FROM UserReviews WHERE commentedOn = %s AND commentedBy = %s and bookingId = %s"
+    db_cursor.execute(sql_query, (host_sin, renter_sin, bookingId))
+    result = db_cursor.fetchone()
+    if result is not None:
+        click.echo("You have already commented on this booking.")
+        return
+    
+    sql_query = "INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating, bookingId) VALUES (%s, %s, %s, %s, %s)"
     comment = click.prompt("Please enter a comment about the user.", type=str, default="", show_default=False)
     if comment == "":
         comment = None
@@ -111,7 +117,7 @@ def comment_as_renter(ctx, bookingId):
     elif rating < 1 or rating > 5:
         click.echo("Invalid rating.")
         return
-    db_cursor.execute(sql_query, (host_sin, renter_sin, comment, rating))
+    db_cursor.execute(sql_query, (host_sin, renter_sin, comment, rating, bookingId))
     db_connection.commit()
     db_cursor.close()
     click.echo("Thank you for your rating and comment.")
@@ -139,11 +145,17 @@ def comment_as_host(ctx,bookingid):
         click.echo("Invalid listing ID.")
         return
     host_sin = result[0]
-    if host_sin != ctx.obj["userSIN"]:
+    if int(host_sin) != int(ctx.obj["userSIN"]):
         click.echo("You are not the host of the listing from this booking id.")
         return
-    
-    sql_query = "INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating) VALUES (%s, %s, %s, %s)"
+    sql_query = "SELECT * FROM UserReviews WHERE commentedOn = %s AND commentedBy = %s and bookingId = %s"
+    db_cursor.execute(sql_query, (renterSin, host_sin, bookingid))
+    result = db_cursor.fetchone()
+    if result is not None:
+        click.echo("You have already commented on this booking.")
+        return
+
+    sql_query = "INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating, bookingId) VALUES (%s, %s, %s, %s, %s)"
 
     comment = click.prompt("Please enter a comment about the user.", type=str, default="", show_default=False)
     if comment == "":
@@ -154,7 +166,7 @@ def comment_as_host(ctx,bookingid):
     elif rating < 1 or rating > 5:
         click.echo("Invalid rating.")
         return
-    db_cursor.execute(sql_query, (renterSin, host_sin, comment, rating))
+    db_cursor.execute(sql_query, (renterSin, host_sin, comment, rating, bookingid))
     db_connection.commit()
     db_cursor.close()
     click.echo("Thank you for your rating and comment.")
