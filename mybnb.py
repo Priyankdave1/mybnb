@@ -1292,8 +1292,10 @@ def report6_most_cancellations(ctx, run_for):
         query = "select distinct firstName, lastName, count(BookingId) as 'Number of Bookings' from BookedBy, User where startDate >= year(curdate()) and isCancelled = true and renterSIN != cancelledBy and cancelledBy = SIN group by cancelledBy order by 'Number of Bookings';"
         db_cursor.execute(query)
     result = db_cursor.fetchall()
-    for row in result:
-        click.echo(row[0])
+    if len(result) == 0:
+        click.echo("No results found")
+        return
+    click.echo(tb.tabulate(result, headers=["First Name", "Last Name", "Number of Bookings Cancelled"]))
     db_cursor.close()
     return
 
