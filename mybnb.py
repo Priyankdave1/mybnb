@@ -1261,7 +1261,14 @@ def report5_rank_renters_by_num_bookings(ctx, start_date, end_date, city):
         query = "select firstName, lastName, count(b.bookingId) as 'Number of Bookings' from BookedBy as b join User as l on b.renterSIN = l.SIN where startDate >= %s and endDate <= %s group by renterSIN order by 'Number of Bookings';"
         db_cursor.execute(query, (start_date, end_date))
     else:
-        query = "select firstName, lastName, count(b.bookingId) as 'Number of Bookings' from BookedBy as b join User as u on b.renterSIN = u.SIN join Listing as l on b.listingId = l.listingId where startDate >= %s and endDate <= %s and city = %s and 'Number of Bookings' >= 2 group by renterSIN order by 'Number of Bookings';"
+        query = """SELECT u.firstName, u.lastName, COUNT(b.bookingId) AS 'Number of Bookings'
+FROM BookedBy AS b
+JOIN User AS u ON b.renterSIN = u.SIN
+JOIN Listing AS l ON b.listingId = l.listingId
+WHERE startDate >= %s AND endDate <= %s AND city = %s
+GROUP BY renterSIN
+HAVING COUNT(b.bookingId) >= 2
+ORDER BY 'Number of Bookings';"""
         db_cursor.execute(query, (start_date, end_date, city))
     result = db_cursor.fetchall()
     result =  sorted(result,key=lambda x: x[2], reverse=True)
