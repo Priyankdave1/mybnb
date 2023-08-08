@@ -530,7 +530,8 @@ def create_listing(ctx):
 
     db_connection.commit()
 
-    # Close the cursor and connection
+    
+
     db_cursor.close()
     db_connection.close()
     print("Inserted listing ID:", listing_id)
@@ -632,7 +633,7 @@ def create_booking(ctx):
     
 
 
-    # doesn't include the users listings
+    
     getNumAvailibilityInRange = """
     SELECT L.listingId, L.city, L.latitude, L.longitude, L.postalCode, L.country, L.type, L.address, L.bedrooms, L.bathrooms
     FROM (
@@ -659,7 +660,7 @@ def create_booking(ctx):
         return
     
     print("Available listings:")
-    #view the listings
+    
     print(
         tb.tabulate(
             result,
