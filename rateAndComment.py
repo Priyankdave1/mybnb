@@ -1,5 +1,82 @@
 import click
 from db import get_db_connection
+import tabulate as tb
+
+def view_booking_as_renter(sin):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    getAllBookings_query = """
+    SELECT bookingId,startDate,endDate,city, latitude, longitude, postalCode, country, type, address, bedrooms, bathrooms
+    FROM(BookedBy JOIN Listing ON BookedBy.listingId = Listing.listingId)
+    WHERE RenterSIN = %s
+    """
+    db_cursor.execute(getAllBookings_query, (sin,))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("You have no bookings.")
+        return
+    click.echo("Your bookings:")
+    print(result)
+    print(
+        tb.tabulate(
+            result,
+            headers=[
+                "bookingId",
+                "startDate",
+                "endDate",
+                "city",
+                "latitude",
+                "longitude",
+                "postalCode",
+                "country",
+                "type",
+                "address",
+                "bedrooms",
+                "bathrooms",
+            ],
+        )
+    )
+    db_cursor.close()
+    db_connection.close()
+
+def view_booking_as_host(sin):
+    db_connection = get_db_connection()
+    db_cursor = db_connection.cursor()
+    getAllHostBookings_query = """
+    SELECT bookingId,startDate,endDate,BookedBy.listingId,address
+    FROM(BookedBy JOIN Listing ON BookedBy.listingId = Listing.listingId JOIN UserCreatesListing ON Listing.listingId = UserCreatesListing.listingId)
+    WHERE hostSIN = %s
+    """
+    db_cursor.execute(getAllHostBookings_query, (sin,))
+    result = db_cursor.fetchall()
+    if len(result) == 0:
+        click.echo("You have no bookings.")
+        return
+    click.echo("Your bookings:")
+    print(result)
+    print(
+        tb.tabulate(
+            result,
+            headers=[
+                "bookingId",
+                "startDate",
+                "endDate",
+                "city",
+                "latitude",
+                "longitude",
+                "postalCode",
+                "country",
+                "type",
+                "address",
+                "bedrooms",
+                "bathrooms",
+            ],
+        )
+    )
+    db_cursor.close()
+    db_connection.close()
+
+
 
 @click.pass_context
 def comment_as_renter(ctx, bookingId):
@@ -48,10 +125,10 @@ def comment_as_host(ctx,bookingid):
     db_cursor.execute(sql_query, (bookingid,))
     result = db_cursor.fetchone()
     if result is None:
-        click.echo("Invalid booking ID.")
+        click.echo("Invalid booking ID, or you have not checked out yet.")
         return
     if result[5] ==1:
-        click.echo("You have cancelled this booking.")
+        click.echo("This booking has been cancelled.")
         return
     renterSin = result[2]
     listingID =  result[1]

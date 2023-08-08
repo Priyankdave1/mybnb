@@ -372,9 +372,9 @@ def create_listing(ctx):
     )
 
     Ltype = Ltype.lower()
-    if Ltype not in ["apartment", "house", "room"]:
-        click.echo("Invalid type. Type must be one of: Apartment, House, Room.")
-        return
+    # if Ltype not in ["apartment", "house", "room"]:
+    #     click.echo("Invalid type. Type must be one of: Apartment, House, Room.")
+    #     return
     if Ltype == "apartment":
         aptNum = click.prompt("Apartment Number")
         if len(aptNum) == 0:
@@ -448,7 +448,7 @@ def create_listing(ctx):
     click.echo("Available amenities:")
     for row in result:
         choices.append(row[0])
-        click.echo(row[0])
+        
 
     for idx, choice in enumerate(choices, start=1):
         click.echo(f"  [{idx}] {choice}")
@@ -456,6 +456,9 @@ def create_listing(ctx):
     selected_indexes = click.prompt(
         "Please select one or more options (comma-separated)", type=click.STRING
     )
+    if selected_indexes.isalnum():
+        click.echo("Invalid input. Please enter a comma-separated list of numbers.")
+        return
     selected_indexes = [int(idx.strip()) for idx in selected_indexes.split(",")]
 
     selected_choices = [
@@ -482,9 +485,6 @@ def create_listing(ctx):
     sin = ctx.obj["userSIN"]
     listing_id = db_cursor.lastrowid
 
-    print("Sin: " + str(sin))
-
-    print("Listing ID: " + str(listing_id))
 
     for choice in selected_choices:
         addAmenities_query = (
@@ -508,7 +508,7 @@ def create_listing(ctx):
     # Close the cursor and connection
     db_cursor.close()
     db_connection.close()
-    # print("Inserted listing ID:", listing_id)
+    print("Inserted listing ID:", listing_id)
 
 
 @cli.command()
@@ -801,9 +801,12 @@ def rate_and_comment_user(ctx, acctype, bookingid):
     if not ctx.obj["is_logged_in"]:
         click.echo("You are not logged in.")
         return
+    sin = ctx.obj["userSIN"]
     if acctype == "host":
+        rateAndComment.view_booking_as_host(sin)
         rateAndComment.comment_as_host(bookingid)
     elif acctype == "renter":
+        rateAndComment.view_booking_as_renter(sin)
         rateAndComment.comment_as_renter(bookingid)
     else:
         click.echo("Invalid account type.")
@@ -812,46 +815,21 @@ def rate_and_comment_user(ctx, acctype, bookingid):
 
 @cli.command()
 @click.pass_context
-def view_booking(ctx):
+def view_booking_as_renter(ctx):
     if not ctx.obj["is_logged_in"]:
         click.echo("You are not logged in.")
         return
     sin = ctx.obj["userSIN"]
-    db_connection = get_db_connection()
-    db_cursor = db_connection.cursor()
-    getAllBookings_query = """
-    SELECT bookingId,startDate,endDate,city, latitude, longitude, postalCode, country, type, address, bedrooms, bathrooms
-    FROM(BookedBy JOIN Listing ON BookedBy.listingId = Listing.listingId)
-    WHERE RenterSIN = %s
-    """
-    db_cursor.execute(getAllBookings_query, (sin,))
-    result = db_cursor.fetchall()
-    if len(result) == 0:
-        click.echo("You have no bookings.")
+    rateAndComment.view_booking_as_renter(sin)
+
+@cli.command()
+@click.pass_context
+def view_booking_as_host(ctx):
+    if not ctx.obj["is_logged_in"]:
+        click.echo("You are not logged in.")
         return
-    click.echo("Your bookings:")
-    print(result)
-    print(
-        tb.tabulate(
-            result,
-            headers=[
-                "bookingId",
-                "startDate",
-                "endDate",
-                "city",
-                "latitude",
-                "longitude",
-                "postalCode",
-                "country",
-                "type",
-                "address",
-                "bedrooms",
-                "bathrooms",
-            ],
-        )
-    )
-    db_cursor.close()
-    db_connection.close()
+    sin = ctx.obj["userSIN"]
+    rateAndComment.view_booking_as_host(sin)
 
 
 @cli.command()
@@ -998,7 +976,7 @@ def update_availability(ctx):
             return
         current_date = start_date
         while current_date <= end_date:
-            addAvailability_query = "INSERT INTO Availability (listingId, dateAvailable, isAvailable, price) VALUES (%s, %s, %s, 1) ON DUPLICATE KEY UPDATE isAvailable = 1, price = %s"
+            addAvailability_query = "INSERT INTO Availability (listingId, dateAvailable, price, isAvailable) VALUES (%s, %s, %s, 1) ON DUPLICATE KEY UPDATE isAvailable = 1, price = %s"
             db_cursor.execute(
                 addAvailability_query, (listing_id, current_date, new_price, new_price)
             )
@@ -1309,11 +1287,6 @@ def host_tool_kit(ctx):
     sin = ctx.obj["userSIN"]
     hostToolKit.host_tool_kit(sin)
 
-
-@cli.command()
-@click.pass_context
-def hello(ctx):
-    click.echo("Hello %s!" % ctx.obj["username"])
 
 
 if __name__ == "__main__":
