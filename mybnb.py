@@ -487,6 +487,8 @@ def create_listing(ctx):
     selected_choices = [
         choices[idx - 1] for idx in selected_indexes if 1 <= idx <= len(choices)
     ]
+    ##Remove duplicates
+    selected_choices = list(set(selected_choices))
     click.echo(f'You selected: {", ".join(selected_choices)}')
 
     createListing_query = "INSERT INTO Listing (city, latitude, longitude, postalCode, country, type, address, bedrooms, bathrooms) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"  # Use %s for all placeholders
@@ -804,36 +806,7 @@ def Rate_and_Comment_on_listing(ctx, bookingid):
     rateAndComment.rate(bookingid)
 
 
-@cli.command()
-@click.pass_context
-@click.option(
-    "--accType",
-    "-a",
-    prompt="Comment or rate as a host or renter?",
-    help="The type of account you want to comment or rate as.",
-    type=click.Choice(["host", "renter"], case_sensitive=False),
-)
-@click.option(
-    "--bookingId",
-    "-b",
-    prompt="Booking ID",
-    help="The booking ID of the booking you want to rate and comment on.",
-    type=int,
-)
-def rate_and_comment_user(ctx, acctype, bookingid):
-    if not ctx.obj["is_logged_in"]:
-        click.echo("You are not logged in.")
-        return
-    sin = ctx.obj["userSIN"]
-    if acctype == "host":
-        rateAndComment.view_booking_as_host(sin)
-        rateAndComment.comment_as_host(bookingid)
-    elif acctype == "renter":
-        rateAndComment.view_booking_as_renter(sin)
-        rateAndComment.comment_as_renter(bookingid)
-    else:
-        click.echo("Invalid account type.")
-        return
+
 
 
 @cli.command()
