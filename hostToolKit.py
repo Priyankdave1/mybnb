@@ -18,7 +18,7 @@ BathroomPrice = 10
 def getListingPrice(listing):
     listingType = listing[6]
     listingPrices = getTypeListingPrices()
-    suggestedPrice = listingPrices[listingType]
+    suggestedPrice = listingPrices[listingType.lower()]
     suggestedPrice += listing[8]*BedroomPrice + listing[9]*BathroomPrice
     getAllAmenitiesForListing_query = "SELECT Amenities.name, price FROM ListingToAmenities JOIN Amenities ON ListingToAmenities.amenity = Amenities.name WHERE listingId = %s"
     db_connection = get_db_connection()
@@ -93,7 +93,7 @@ essential_amenities = {
 def getEssentialAmenities(listing):
     type = listing[6]
     click.echo("Essential amenities for a "+type+":")
-    click.echo("\n".join(essential_amenities[type]))
+    click.echo("\n".join(essential_amenities[type.lower()]))
     return
 
 
@@ -125,7 +125,7 @@ def getPriceWithAmenities(listing):
     
     suggestedPrice = getListingPrice(listing)
 
-    print("Suggested original price per night: "+str(suggestedPrice))
+    print("Suggested original price per day: "+str(suggestedPrice))
 
     for amenity in result:
         if amenity[0] in selected_choices:
@@ -174,14 +174,23 @@ def host_tool_kit(sin):
     choice = click.prompt("[1] Generate price, [2] Show essential amenities, [3] Generate price using the addition of more amenities", type=int)
     if choice == 1:
         suggestedPrice = getListingPrice(listing)
-        print("Amenities for this listing:")
-        print(result)
-        print("Suggested price per night: "+str(suggestedPrice))
+        # getAllAmensForListing_query = "SELECT name FROM ListingToAmenities NATURAL JOIN Amenities WHERE listingId = %s"
+        # db_cursor.execute(getAllAmensForListing_query, (listing[0],))
+        # result = db_cursor.fetchall()
+        # if len(result) == 0:
+        #     print("Suggested price: "+str(suggestedPrice))
+        #     return
+        # print("Current amenities for this listing:")
+        # print(result)
+        # for amenity in result:
+        #     print(amenity[0])
+        
+        print("Suggested price per day: "+str(suggestedPrice))
     elif choice == 2:
         getEssentialAmenities(listing)
     elif choice == 3:
         suggestedPrice = getPriceWithAmenities(listing)
-        print("Suggested price per night with new amenities included: "+str(suggestedPrice))
+        print("Suggested price per day with new amenities included: "+str(suggestedPrice))
     else:
         click.echo("Invalid choice.")
         return

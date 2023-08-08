@@ -433,7 +433,7 @@ def create_listing(ctx):
 
         bathrooms = click.prompt("Number of Bathrooms", type=int)
 
-    price = click.prompt("Per Night Price", type=float)
+    price = click.prompt("Per Day Price", type=float)
     if price < 0:
         click.echo("Invalid price.")
         return
@@ -581,7 +581,7 @@ def delete_listing(ctx, all):
     for row in result:
         keys.append(row[0])
 
-    print(keys)
+
 
     listing_id = click.prompt(
         "Please enter the ID of the listing you want to delete", type=int
@@ -1021,8 +1021,6 @@ def update_price(ctx):
     for row in result:
         keys.append(row[0])
 
-    print(keys)
-
     listing_id = click.prompt(
         "Please enter the ID of the listing you want to update the price", type=int
     )
@@ -1046,6 +1044,30 @@ def update_price(ctx):
             "Invalid date range. Start Date should be earlier than or equal to End Date."
         )
         return
+    
+    isBooked_query = """
+            SELECT *
+            FROM BookedBy
+            WHERE
+                listingId = %s
+                AND isCancelled = 0
+                AND (
+                    (startDate <= %s AND endDate >= %s)
+                    OR (startDate BETWEEN %s AND %s)
+                    OR (endDate BETWEEN %s AND %s)
+                )
+            """
+    db_cursor.execute(
+        isBooked_query,
+        (listing_id, start_date, end_date, start_date, end_date, start_date, end_date),
+    )
+    result = db_cursor.fetchall()
+    if len(result) > 0:
+        click.echo(
+            "Listing is booked during this time. Please cancel the booking first."
+        )
+        return
+
 
     # Write a query to check if that listing is Available during those dates
 
