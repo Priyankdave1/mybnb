@@ -232,7 +232,9 @@ def listingsInRange(ctx):
         return
     else:
         if (sortbyDistance == 'y'):
+            
             listings_in_range_by_distance = sorted(listings_in_range_by_distance, key=lambda x: x[10])
+
         elif (ctx.obj['sortByPrice']=='asc'):
             listings_in_range_by_distance = sorted(listings_in_range_by_distance, key=lambda x: x[11])
         elif (ctx.obj['sortByPrice']=='desc'):

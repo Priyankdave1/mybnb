@@ -93,7 +93,7 @@ CREATE TABLE `BookedBy` (
   KEY `cancelledByFK_idx` (`cancelledBy`),
   CONSTRAINT `cancelledByFK` FOREIGN KEY (`cancelledBy`) REFERENCES `User` (`SIN`) ON DELETE CASCADE,
   CONSTRAINT `FKlistingID` FOREIGN KEY (`ListingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
-  CONSTRAINT `RenterFK` FOREIGN KEY (`RenterSIN`) REFERENCES `User` (`SIN`)
+  CONSTRAINT `RenterFK` FOREIGN KEY (`RenterSIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
 )  ;
 
 
@@ -108,13 +108,13 @@ CREATE TABLE `UserCreatesListing` (
 )  ;
 
 CREATE TABLE `ListingReviewAndComments` (
-  `listingId` int NOT NULL,
+  `bookingId` int NOT NULL,
   `renterSIN` int NOT NULL,
   `comment` longtext,
   `rating` int DEFAULT NULL,
-  PRIMARY KEY (`listingId`,`renterSIN`),
+  PRIMARY KEY (`renterSIN`,`bookingId`),
   KEY `Renter_idx` (`renterSIN`),
-  CONSTRAINT `Listing` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE,
+  CONSTRAINT `BookingIdFK2` FOREIGN KEY (`bookingId`) REFERENCES `BookedBy` (`bookingId`) ON DELETE CASCADE,
   CONSTRAINT `Renter` FOREIGN KEY (`renterSIN`) REFERENCES `User` (`SIN`) ON DELETE CASCADE
 )  ;
 
@@ -131,15 +131,15 @@ CREATE TABLE `ListingToAmenities` (
 
 CREATE TABLE `UserReviews` (
   `commentedOn` int NOT NULL,
-  `commentedBy` int DEFAULT NULL,
+  `commentedBy` int NOT NULL,
   `comment` longtext,
   `rating` int DEFAULT NULL,
-  `listingId` int NOT NULL,
-  PRIMARY KEY (`commentedOn`,`commentedBy`,`listingId`),
+  `bookingId` int NOT NULL,
+  PRIMARY KEY (`commentedOn`,`commentedBy`,`bookingId`),
   KEY `CommentedBy_idx` (`commentedBy`),
   CONSTRAINT `CommentedBy` FOREIGN KEY (`commentedBy`) REFERENCES `User` (`SIN`) ON DELETE CASCADE,
   CONSTRAINT `CommentedOn` FOREIGN KEY (`commentedOn`) REFERENCES `User` (`SIN`) ON DELETE CASCADE,
-  CONSTRAINT `ListingId` FOREIGN KEY (`listingId`) REFERENCES `Listing` (`listingId`) ON DELETE CASCADE
+  CONSTRAINT  `BookingId` FOREIGN KEY (`bookingId`) REFERENCES `BookedBy` (`bookingId`) ON DELETE CASCADE
 )  ;
 
 INSERT INTO `user` VALUES (111111222,'567 Elm St','Teacher','1987-03-25','Shantal','Smith','shantal.smith','teacher456','9999000011112222'),(111113333,'789 Connaught Place','Teacher','1987-03-25','Sarah','Smith','sarah.smith','teacher456','9999000011112222'),(123456789,'789 Pine St','Student','2000-05-10','Jessica','Brown','jessica.brown','password123','1111222233334444'),(242355436,'123 Main St','Engineer','1990-01-15','John','Doe','john.doe','password123','1234567890123456'),(254345255,'789 Oak St','Accountant','1988-07-10','Michael','Johnson','michael.johnson','pass123','5678901234567890'),(254534643,'456 Elm St','Teacher','1995-03-20','Jane','Smith','jane.smith','mypassword','9876543210987654'),(346346343,'555 Walnut St','Artist','1991-12-08','Sophia','Lee','sophia.lee','1234567890','4567890123456789'),(346568346,'444 Birch St','Architect','1998-06-18','James','Miller','james.miller','testpw','7654321098765432'),(346646464,'222 Maple St','Lawyer','1992-09-05','William','Brown','william.brown','securepw','8765432109876543'),(444555666,'234 Maple St','Doctor','1980-11-02','Alphonso','Miller','david.miller','doctor789','3333444455556666'),(445566777,'234 MG Road','Doctor','1980-11-02','David','Miller','david.miller','doctor789','3333444455556666'),(563533452,'666 Cedar St','Chef','1989-02-28','Daniel','Wilson','daniel.wilson','pass1234','9876543210987654'),(646456643,'101 Pine St','Doctor','1985-11-25','Sydney','Williams','emily.williams','qwerty','2345678901234567'),(745632564,'678 Link Road','Artist','1999-07-12','Emily','Armstrong','emily.williams','artist123','7777888899990000'),(768574346,'333 Cedar St','Writer','1982-04-30','Olivia','Jones','olivia.jones','password321','3456789012345678'),(777888999,'678 Cedar St','Artist','1999-07-12','Emily','Williams','emily.williams','artist123','7777888899990000'),(875446664,'777 Oak St','Entrepreneur','1997-10-12','Isabella','Anderson','isabella.anderson','mypassword123','3456789012345678'),(987652211,'456 Rajpur Road','Engineer','1993-09-15','Silva','Johnson','matthew.johnson','engineer123','5555666677778888'),(987654321,'456 Oak St','Engineer','1993-09-15','Matthew','Johnson','matthew.johnson','engineer123','5555666677778888'),(998854321,'123 Kamla Nagar','Student','2000-05-10','Valerie','Brown','jessica.brown','password123','1111222233334444');
@@ -199,3 +199,20 @@ INSERT INTO `listingtoamenities` VALUES (1,'Bed linens'),(1,'Body soap'),(1,'Cle
 
 
 
+INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating, bookingId)
+VALUES ('646456643', '242355436', 'Great Renter', '5', '1');
+
+
+INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating, bookingId)
+VALUES ('111111222', '254345255', 'Thank you for choosing our place.', '4', '8');
+
+INSERT INTO UserReviews (commentedOn, commentedBy, comment, rating, bookingId)
+VALUES ('111111222', '254345255', 'Great communication.', '5', '9');
+
+INSERT INTO `airbnb`.`ListingReviewAndComments`
+(`bookingId`,
+`renterSIN`,
+`comment`,
+`rating`)
+VALUES
+('4', '242355436', 'Very nice place to stay', '3');

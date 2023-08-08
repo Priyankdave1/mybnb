@@ -353,7 +353,7 @@ def search_with_filters(
                 )
                 return
             ctx.obj["sortByPrice"] = click.prompt(
-                "Please enter sort order (asc/desc):",
+                "Please enter sort order for price(asc/desc):",
                 type=click.Choice(["asc", "desc"], case_sensitive=False),
                 default="asc",
             )
@@ -1191,6 +1191,7 @@ def report3_host_ranking_by_listings_owned(ctx, country, city):
         query = "select firstName, lastName, count(l.listingId) from Listing as l join UserCreatesListing as u join User as y where country = %s and l.listingId = u.listingId and city = %s and y.SIN = u.hostSIN group by hostSIN order by hostSIN;"
         db_cursor.execute(query, (country, city))
     result = db_cursor.fetchall()
+    result =  sorted(result,key=lambda x: x[2], reverse=True)
     if len(result) == 0:
         click.echo("No results found.")
         return
@@ -1207,14 +1208,43 @@ def report4_possible_commercial_hosts(ctx, country, city):
     db_connection = get_db_connection()
     db_cursor = db_connection.cursor()
     if city == None:
-        query = "select u.hostSIN, count(l.listingId) as num_listings from Listing as l join UserCreatesListing as u on l.listingId = u.listingId join (select count(listingId) as listings, city, country from Listing where country = %s group by country, city) as m on l.country = m.country and l.city = m.city group by u.hostSIN, m.listings having count(l.listingId) >= (m.listings * 0.1) order by u.hostSIN;"
+        query = """SELECT firstName, lastName, SUM(num_listings) AS 'Number of Listings'
+FROM (
+    SELECT p.firstName, p.lastName, COUNT(DISTINCT l.listingId) AS num_listings
+    FROM Listing AS l
+    JOIN UserCreatesListing AS u ON l.listingId = u.listingId
+    JOIN (
+        SELECT COUNT(listingId) AS listings, city, country
+        FROM Listing
+        WHERE country = %s
+        GROUP BY country, city
+    ) AS m ON l.country = m.country AND l.city = m.city
+    JOIN User AS p ON p.SIN = u.hostSIN
+    GROUP BY p.SIN, p.firstName, p.lastName, m.listings
+    HAVING COUNT(DISTINCT l.listingId) >= (m.listings * 0.1)
+) AS subquery
+GROUP BY firstName, lastName;"""
         db_cursor.execute(query, (country,))
     else:
-        query = "select u.hostSIN, count(l.listingId) as num_listings from Listing as l join UserCreatesListing as u on l.listingId = u.listingId join (select count(listingId) as listings, city, country from Listing where country = %s and city = %s group by country, city) as m on l.country = m.country and l.city = m.city group by u.hostSIN, m.listings having count(l.listingId) >= (m.listings * 0.1) order by u.hostSIN;"
+        query = """SELECT firstName, lastName, SUM(num_listings) AS 'Number of Listings'
+FROM (
+    SELECT p.firstName, p.lastName, COUNT(DISTINCT l.listingId) AS num_listings
+    FROM Listing AS l
+    JOIN UserCreatesListing AS u ON l.listingId = u.listingId
+    JOIN (
+        SELECT COUNT(listingId) AS listings, city, country
+        FROM Listing
+        WHERE country = %s AND city = %s
+        GROUP BY country, city
+    ) AS m ON l.country = m.country AND l.city = m.city
+    JOIN User AS p ON p.SIN = u.hostSIN
+    GROUP BY p.SIN, p.firstName, p.lastName, m.listings
+    HAVING COUNT(DISTINCT l.listingId) >= (m.listings * 0.1)
+) AS subquery
+GROUP BY firstName, lastName;"""
         db_cursor.execute(query, (country, city))
     result = db_cursor.fetchall()
-    for row in result:
-        click.echo(row[0])
+    click.echo(tb.tabulate(result, headers=["First Name", "Last Name", "Number of Listings"]))
     db_cursor.close()
     return
 
@@ -1234,8 +1264,8 @@ def report5_rank_renters_by_num_bookings(ctx, start_date, end_date, city):
         query = "select firstName, lastName, count(b.bookingId) as 'Number of Bookings' from BookedBy as b join User as u on b.renterSIN = u.SIN join Listing as l on b.listingId = l.listingId where startDate >= %s and endDate <= %s and city = %s and 'Number of Bookings' >= 2 group by renterSIN order by 'Number of Bookings';"
         db_cursor.execute(query, (start_date, end_date, city))
     result = db_cursor.fetchall()
-    for row in result:
-        click.echo(row[0])
+    result =  sorted(result,key=lambda x: x[2], reverse=True)
+    click.echo(tb.tabulate(result, headers=["First Name", "Last Name", "Number of Bookings"]))
     db_cursor.close()
     return
 

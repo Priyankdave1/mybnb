@@ -8,7 +8,7 @@ def view_booking_as_renter(sin):
     getAllBookings_query = """
     SELECT bookingId,startDate,endDate,city, latitude, longitude, postalCode, country, type, address, bedrooms, bathrooms
     FROM(BookedBy JOIN Listing ON BookedBy.listingId = Listing.listingId)
-    WHERE RenterSIN = %s
+    WHERE RenterSIN = %s AND isCancelled = 0
     """
     db_cursor.execute(getAllBookings_query, (sin,))
     result = db_cursor.fetchall()
@@ -45,7 +45,7 @@ def view_booking_as_host(sin):
     getAllHostBookings_query = """
     SELECT bookingId,startDate,endDate,BookedBy.listingId,address
     FROM(BookedBy JOIN Listing ON BookedBy.listingId = Listing.listingId JOIN UserCreatesListing ON Listing.listingId = UserCreatesListing.listingId)
-    WHERE hostSIN = %s
+    WHERE hostSIN = %s AND isCancelled = 0
     """
     db_cursor.execute(getAllHostBookings_query, (sin,))
     result = db_cursor.fetchall()
@@ -186,8 +186,8 @@ def rate(ctx,bookingid):
         click.echo("You have cancelled this booking.")
         return
     listingid = result[1]
-    checkRating_query = "SELECT * FROM ListingReviewAndComments WHERE listingId = %s AND renterSIN = %s"
-    db_cursor.execute(checkRating_query, (listingid,sin))
+    checkRating_query = "SELECT * FROM ListingReviewAndComments WHERE bookingId = %s AND renterSIN = %s"
+    db_cursor.execute(checkRating_query, (bookingid,sin))
     result = db_cursor.fetchone()
     if result is not None:
         click.echo("You have already rated or commented on this listing.")
@@ -201,8 +201,8 @@ def rate(ctx,bookingid):
     comment = click.prompt("Please enter a comment about the listing.", type=str, default="", show_default=False)
     if comment == "":
         comment = None
-    addRating_query = "INSERT INTO ListingReviewAndComments (listingId, renterSIN, rating, comment) VALUES (%s, %s, %s, %s)"
-    db_cursor.execute(addRating_query, (listingid,sin,rating,comment))
+    addRating_query = "INSERT INTO ListingReviewAndComments (bookingId, renterSIN, rating, comment) VALUES (%s, %s, %s, %s)"
+    db_cursor.execute(addRating_query, (bookingid,sin,rating,comment))
     db_connection.commit()
     db_cursor.close()
     db_connection.close()

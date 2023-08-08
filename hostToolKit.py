@@ -111,7 +111,7 @@ def getPriceWithAmenities(listing):
     choices = []
     for row in result:
         choices.append(row[0])
-        click.echo(row[0])
+        
     
     for idx, choice in enumerate(choices, start=1):
         click.echo(f"  [{idx}] {choice}")
@@ -151,7 +151,8 @@ def host_tool_kit(sin):
         click.echo("You have no listings.")
         return
     click.echo("Your listings:")
-    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address"]))
+    print(result)
+    print(tb.tabulate(result, headers=["listingId", "city", "latitude", "longitude", "postalCode", "country", "type", "address","bedrooms","bathrooms"]))
     
     keys=[]
     for row in result:
